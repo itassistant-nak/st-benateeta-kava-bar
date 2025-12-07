@@ -514,37 +514,41 @@ export default function DailyEntryForm({ onSuccess }: DailyEntryFormProps) {
             </div>
 
             {/* Calculation Preview */}
-            <div className="grid grid-2 mt-lg mb-lg" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+            <div className="mt-lg mb-lg" style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                gap: 'var(--spacing-md)'
+            }}>
                 <div className="stat-card">
                     <div className="stat-label">+ Total Expenses</div>
-                    <div className="stat-value" style={{ fontSize: '1.5rem' }}>
+                    <div className="stat-value" style={{ fontSize: 'clamp(1rem, 4vw, 1.5rem)' }}>
                         ${totalExpenses.toFixed(2)}
                     </div>
-                    <div className="text-dim" style={{ fontSize: '0.75rem' }}>
-                        W: ${waiterNum.toFixed(0)} + S: ${serversNum.toFixed(0)} + B: ${bookkeepingNum.toFixed(0)} + O: ${otherNum.toFixed(0)}
+                    <div className="text-dim" style={{ fontSize: '0.65rem', wordBreak: 'break-word' }}>
+                        W:${waiterNum.toFixed(0)} S:${serversNum.toFixed(0)} B:${bookkeepingNum.toFixed(0)} O:${otherNum.toFixed(0)}
                     </div>
                 </div>
 
                 <div className="stat-card">
                     <div className="stat-label">- Powder Cost</div>
-                    <div className="stat-value" style={{ fontSize: '1.5rem' }}>
+                    <div className="stat-value" style={{ fontSize: 'clamp(1rem, 4vw, 1.5rem)' }}>
                         ${powderCost.toFixed(2)}
                     </div>
                 </div>
 
                 <div className="stat-card">
                     <div className="stat-label">Net Profit</div>
-                    <div className={`stat-value ${netProfit >= 0 ? 'text-success' : 'text-error'}`} style={{ fontSize: '1.5rem' }}>
+                    <div className={`stat-value ${netProfit >= 0 ? 'text-success' : 'text-error'}`} style={{ fontSize: 'clamp(1rem, 4vw, 1.5rem)' }}>
                         ${netProfit.toFixed(2)}
                     </div>
-                    <div className="text-dim" style={{ fontSize: '0.75rem' }}>
+                    <div className="text-dim" style={{ fontSize: '0.65rem' }}>
                         Cash + Credits - Powder
                     </div>
                 </div>
 
                 <div className="stat-card">
                     <div className="stat-label">= Profit</div>
-                    <div className={`stat-value ${profit >= 0 ? 'text-success' : 'text-error'}`} style={{ fontSize: '1.5rem' }}>
+                    <div className={`stat-value ${profit >= 0 ? 'text-success' : 'text-error'}`} style={{ fontSize: 'clamp(1rem, 4vw, 1.5rem)' }}>
                         ${profit.toFixed(2)}
                     </div>
                 </div>
