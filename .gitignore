@@ -31,7 +31,17 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
-.env*
+.env.local
+
+# Keep production env
+!.env.production
+
+# Database (don't commit user data)
+/database/*.db
+/database/backups/
+
+# Logs
+/logs/
 
 # vercel
 .vercel
