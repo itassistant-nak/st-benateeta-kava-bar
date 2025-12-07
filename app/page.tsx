@@ -87,11 +87,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-lg text-center">
-          <p className="text-dim" style={{ fontSize: '0.75rem' }}>
-            Default credentials: admin / admin123
-          </p>
-        </div>
+
       </div>
     </div>
   );
