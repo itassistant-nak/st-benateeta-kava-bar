@@ -382,7 +382,7 @@ export default function DailyEntryForm({ onSuccess }: DailyEntryFormProps) {
                 </div>
             </div>
 
-            {/* Expense Group */}
+            {/* Expenses */}
             <div style={{
                 border: '2px solid var(--border)',
                 borderRadius: 'var(--radius-md)',
@@ -396,7 +396,7 @@ export default function DailyEntryForm({ onSuccess }: DailyEntryFormProps) {
                     color: 'var(--primary)',
                     fontSize: '1.1rem',
                     fontWeight: 600
-                }}>Expense Group</h4>
+                }}>Expenses</h4>
 
                 <div className="grid grid-2">
                     <div className="form-group">
