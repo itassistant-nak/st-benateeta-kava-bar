@@ -423,7 +423,7 @@ export default function DailyEntryForm({ onSuccess }: DailyEntryFormProps) {
                     </div>
 
                     <div className="form-group">
-                        <label className="form-label">Waiter (Tia roti) - AUD</label>
+                        <label className="form-label">Boon te tia Roti - AUD</label>
                         <input
                             type="number"
                             step="0.01"
