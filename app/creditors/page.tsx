@@ -18,11 +18,15 @@ interface CreditorRecord {
     amount: number;
     bookkeeper_name: string | null;
     group_name: string | null;
+    type: 'credit' | 'payment';
+    notes?: string | null;
 }
 
 interface CreditorData {
-    creditors: CreditorRecord[];
-    totalAmount: number;
+    records: CreditorRecord[];
+    totalCredits: number;
+    totalPayments: number;
+    outstandingBalance: number;
     count: number;
     uniqueCreditors: string[];
     uniqueGroups: string[];
@@ -38,6 +42,14 @@ export default function CreditorsPage() {
     const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [creditorFilter, setCreditorFilter] = useState('');
     const [groupFilter, setGroupFilter] = useState('');
+
+    // Add Payment Modal
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [paymentCreditor, setPaymentCreditor] = useState('');
+    const [paymentAmount, setPaymentAmount] = useState('');
+    const [paymentDate, setPaymentDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+    const [paymentNotes, setPaymentNotes] = useState('');
+    const [submitting, setSubmitting] = useState(false);
 
     const fetchCreditors = async () => {
         setLoading(true);
@@ -73,8 +85,48 @@ export default function CreditorsPage() {
         setGroupFilter('');
     };
 
+    const handleAddPayment = async () => {
+        if (!paymentCreditor || !paymentAmount || !paymentDate) {
+            setError('Please fill in all required fields');
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            const response = await fetch('/api/credit-payments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    creditor_name: paymentCreditor,
+                    payment_date: paymentDate,
+                    amount: parseFloat(paymentAmount),
+                    notes: paymentNotes || null,
+                }),
+            });
+
+            if (!response.ok) {
+                const result = await response.json();
+                throw new Error(result.error || 'Failed to add payment');
+            }
+
+            // Reset form and close modal
+            setPaymentCreditor('');
+            setPaymentAmount('');
+            setPaymentDate(format(new Date(), 'yyyy-MM-dd'));
+            setPaymentNotes('');
+            setShowPaymentModal(false);
+
+            // Refresh data
+            fetchCreditors();
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     const exportToPDF = () => {
-        if (!data || data.creditors.length === 0) return;
+        if (!data || data.records.length === 0) return;
 
         const doc = new jsPDF();
 
@@ -97,27 +149,29 @@ export default function CreditorsPage() {
         doc.text(filterText, 14, 42);
 
         // Table data
-        const tableData = data.creditors.map((record) => [
+        const tableData = data.records.map((record) => [
             format(new Date(record.date), 'dd/MM/yyyy'),
             record.creditor_name,
-            `$${record.amount.toFixed(2)}`,
-            record.bookkeeper_name || '-',
-            record.group_name || '-',
+            record.type === 'credit' ? 'Credit' : 'Payment',
+            record.type === 'credit' ? `$${record.amount.toFixed(2)}` : '-',
+            record.type === 'payment' ? `$${record.amount.toFixed(2)}` : '-',
+            record.bookkeeper_name || record.notes || '-',
         ]);
 
         // Add table
         autoTable(doc, {
-            head: [['Date', 'Creditor Name', 'Amount', 'Bookkeeper', 'Group']],
+            head: [['Date', 'Creditor', 'Type', 'Credit', 'Payment', 'Notes']],
             body: tableData,
             startY: 48,
             styles: { fontSize: 9 },
             headStyles: { fillColor: [74, 144, 226] },
             foot: [[
-                'Total',
-                `${data.count} records`,
-                `$${data.totalAmount.toFixed(2)}`,
+                'TOTALS',
                 '',
-                ''
+                '',
+                `$${data.totalCredits.toFixed(2)}`,
+                `$${data.totalPayments.toFixed(2)}`,
+                `Balance: $${data.outstandingBalance.toFixed(2)}`
             ]],
             footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
         });
@@ -199,9 +253,15 @@ export default function CreditorsPage() {
                         Clear Filters
                     </button>
                     <button
+                        className="btn btn-success"
+                        onClick={() => setShowPaymentModal(true)}
+                    >
+                        💰 Add Payment
+                    </button>
+                    <button
                         className="btn btn-primary"
                         onClick={exportToPDF}
-                        disabled={!data || data.creditors.length === 0}
+                        disabled={!data || data.records.length === 0}
                     >
                         📄 Export PDF
                     </button>
@@ -222,13 +282,21 @@ export default function CreditorsPage() {
                         marginBottom: 'var(--spacing-lg)'
                     }}>
                         <div className="stat-card">
-                            <div className="stat-label">Total Records</div>
-                            <div className="stat-value">{data.count}</div>
+                            <div className="stat-label">Total Credits</div>
+                            <div className="stat-value" style={{ color: 'var(--color-warning)' }}>
+                                ${data.totalCredits.toFixed(2)}
+                            </div>
                         </div>
                         <div className="stat-card">
-                            <div className="stat-label">Total Amount</div>
-                            <div className="stat-value" style={{ color: 'var(--color-warning)' }}>
-                                ${data.totalAmount.toFixed(2)}
+                            <div className="stat-label">Total Payments</div>
+                            <div className="stat-value" style={{ color: 'var(--color-success)' }}>
+                                ${data.totalPayments.toFixed(2)}
+                            </div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-label">Outstanding Balance</div>
+                            <div className="stat-value" style={{ color: data.outstandingBalance > 0 ? 'var(--color-error)' : 'var(--color-success)' }}>
+                                ${data.outstandingBalance.toFixed(2)}
                             </div>
                         </div>
                     </div>
@@ -239,25 +307,28 @@ export default function CreditorsPage() {
                     <div className="text-center">
                         <span className="spinner" /> Loading...
                     </div>
-                ) : data && data.creditors.length > 0 ? (
+                ) : data && data.records.length > 0 ? (
                     <div style={{ overflowX: 'auto' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                                 <tr style={{ borderBottom: '2px solid var(--color-border)' }}>
                                     <th style={{ padding: 'var(--spacing-sm) var(--spacing-md)', textAlign: 'left' }}>Date</th>
-                                    <th style={{ padding: 'var(--spacing-sm) var(--spacing-md)', textAlign: 'left' }}>Creditor Name</th>
-                                    <th style={{ padding: 'var(--spacing-sm) var(--spacing-md)', textAlign: 'right' }}>Amount</th>
-                                    <th style={{ padding: 'var(--spacing-sm) var(--spacing-md)', textAlign: 'left' }}>Bookkeeper</th>
-                                    <th style={{ padding: 'var(--spacing-sm) var(--spacing-md)', textAlign: 'left' }}>Group</th>
+                                    <th style={{ padding: 'var(--spacing-sm) var(--spacing-md)', textAlign: 'left' }}>Creditor</th>
+                                    <th style={{ padding: 'var(--spacing-sm) var(--spacing-md)', textAlign: 'center' }}>Type</th>
+                                    <th style={{ padding: 'var(--spacing-sm) var(--spacing-md)', textAlign: 'right' }}>Credit</th>
+                                    <th style={{ padding: 'var(--spacing-sm) var(--spacing-md)', textAlign: 'right' }}>Payment</th>
+                                    <th style={{ padding: 'var(--spacing-sm) var(--spacing-md)', textAlign: 'left' }}>Notes</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {data.creditors.map((record, index) => (
+                                {data.records.map((record, index) => (
                                     <tr
-                                        key={`${record.date}-${record.creditor_name}-${index}`}
+                                        key={`${record.date}-${record.creditor_name}-${record.type}-${index}`}
                                         style={{
                                             borderBottom: '1px solid var(--color-border)',
-                                            background: index % 2 === 0 ? 'transparent' : 'var(--color-bg)'
+                                            background: record.type === 'payment'
+                                                ? 'rgba(16, 185, 129, 0.1)'
+                                                : (index % 2 === 0 ? 'transparent' : 'var(--color-bg)')
                                         }}
                                     >
                                         <td style={{ padding: 'var(--spacing-sm) var(--spacing-md)' }}>
@@ -266,36 +337,66 @@ export default function CreditorsPage() {
                                         <td style={{ padding: 'var(--spacing-sm) var(--spacing-md)', fontWeight: 500 }}>
                                             {record.creditor_name}
                                         </td>
+                                        <td style={{ padding: 'var(--spacing-sm) var(--spacing-md)', textAlign: 'center' }}>
+                                            <span style={{
+                                                padding: '2px 8px',
+                                                borderRadius: '12px',
+                                                fontSize: '12px',
+                                                fontWeight: 600,
+                                                background: record.type === 'credit' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(16, 185, 129, 0.2)',
+                                                color: record.type === 'credit' ? '#f59e0b' : '#10b981'
+                                            }}>
+                                                {record.type === 'credit' ? '⏳ Credit' : '💰 Payment'}
+                                            </span>
+                                        </td>
                                         <td style={{
                                             padding: 'var(--spacing-sm) var(--spacing-md)',
                                             textAlign: 'right',
                                             color: 'var(--color-warning)',
                                             fontWeight: 600
                                         }}>
-                                            ${record.amount.toFixed(2)}
+                                            {record.type === 'credit' ? `$${record.amount.toFixed(2)}` : '-'}
+                                        </td>
+                                        <td style={{
+                                            padding: 'var(--spacing-sm) var(--spacing-md)',
+                                            textAlign: 'right',
+                                            color: 'var(--color-success)',
+                                            fontWeight: 600
+                                        }}>
+                                            {record.type === 'payment' ? `$${record.amount.toFixed(2)}` : '-'}
                                         </td>
                                         <td style={{ padding: 'var(--spacing-sm) var(--spacing-md)', color: 'var(--color-text-muted)' }}>
-                                            {record.bookkeeper_name || '-'}
-                                        </td>
-                                        <td style={{ padding: 'var(--spacing-sm) var(--spacing-md)', color: 'var(--color-text-muted)' }}>
-                                            {record.group_name || '-'}
+                                            {record.bookkeeper_name || record.notes || record.group_name || '-'}
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                             <tfoot>
                                 <tr style={{ borderTop: '2px solid var(--color-border)', fontWeight: 700 }}>
-                                    <td colSpan={2} style={{ padding: 'var(--spacing-sm) var(--spacing-md)' }}>
-                                        Total ({data.count} records)
+                                    <td colSpan={3} style={{ padding: 'var(--spacing-sm) var(--spacing-md)' }}>
+                                        TOTALS
                                     </td>
                                     <td style={{
                                         padding: 'var(--spacing-sm) var(--spacing-md)',
                                         textAlign: 'right',
                                         color: 'var(--color-warning)'
                                     }}>
-                                        ${data.totalAmount.toFixed(2)}
+                                        ${data.totalCredits.toFixed(2)}
                                     </td>
-                                    <td colSpan={2}></td>
+                                    <td style={{
+                                        padding: 'var(--spacing-sm) var(--spacing-md)',
+                                        textAlign: 'right',
+                                        color: 'var(--color-success)'
+                                    }}>
+                                        ${data.totalPayments.toFixed(2)}
+                                    </td>
+                                    <td style={{
+                                        padding: 'var(--spacing-sm) var(--spacing-md)',
+                                        fontWeight: 700,
+                                        color: data.outstandingBalance > 0 ? 'var(--color-error)' : 'var(--color-success)'
+                                    }}>
+                                        Balance: ${data.outstandingBalance.toFixed(2)}
+                                    </td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -306,6 +407,96 @@ export default function CreditorsPage() {
                     </div>
                 )}
             </div>
+
+            {/* Add Payment Modal */}
+            {showPaymentModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                    padding: 'var(--spacing-md)'
+                }}>
+                    <div className="card" style={{ maxWidth: '400px', width: '100%' }}>
+                        <h2 style={{ marginBottom: 'var(--spacing-lg)' }}>💰 Add Credit Payment</h2>
+
+                        <div className="form-group">
+                            <label className="form-label">Creditor Name *</label>
+                            <input
+                                type="text"
+                                className="input"
+                                value={paymentCreditor}
+                                onChange={(e) => setPaymentCreditor(e.target.value)}
+                                placeholder="Enter creditor name"
+                                list="payment-creditor-names"
+                            />
+                            <datalist id="payment-creditor-names">
+                                {data?.uniqueCreditors.map((name) => (
+                                    <option key={name} value={name} />
+                                ))}
+                            </datalist>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Payment Date *</label>
+                            <input
+                                type="date"
+                                className="input"
+                                value={paymentDate}
+                                onChange={(e) => setPaymentDate(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Amount *</label>
+                            <input
+                                type="number"
+                                className="input"
+                                value={paymentAmount}
+                                onChange={(e) => setPaymentAmount(e.target.value)}
+                                placeholder="0.00"
+                                step="0.01"
+                                min="0"
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Notes</label>
+                            <input
+                                type="text"
+                                className="input"
+                                value={paymentNotes}
+                                onChange={(e) => setPaymentNotes(e.target.value)}
+                                placeholder="Optional notes"
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-lg)' }}>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => setShowPaymentModal(false)}
+                                style={{ flex: 1 }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="btn btn-success"
+                                onClick={handleAddPayment}
+                                disabled={submitting}
+                                style={{ flex: 1 }}
+                            >
+                                {submitting ? 'Saving...' : 'Add Payment'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

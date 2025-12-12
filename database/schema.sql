@@ -97,6 +97,22 @@ CREATE TABLE IF NOT EXISTS adjustments (
 CREATE INDEX IF NOT EXISTS idx_adjustments_date ON adjustments(date DESC);
 CREATE INDEX IF NOT EXISTS idx_adjustments_user ON adjustments(user_id, date DESC);
 
+-- Credit payments table (for tracking when creditors pay back)
+CREATE TABLE IF NOT EXISTS credit_payments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  creditor_name TEXT NOT NULL,
+  payment_date DATE NOT NULL,
+  amount REAL NOT NULL,
+  notes TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Indexes for credit payments
+CREATE INDEX IF NOT EXISTS idx_credit_payments_date ON credit_payments(payment_date DESC);
+CREATE INDEX IF NOT EXISTS idx_credit_payments_creditor ON credit_payments(creditor_name, payment_date DESC);
+
 -- Insert default admin user (password: admin123)
 -- Hash generated with bcrypt for password 'admin123'
 INSERT OR IGNORE INTO users (id, username, password_hash, role)

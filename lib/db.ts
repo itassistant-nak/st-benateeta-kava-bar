@@ -197,6 +197,30 @@ function runMigrations(database: Database) {
     } catch (err) {
         console.log('Migration 6 check skipped or already applied');
     }
+
+    // Migration 7: Create credit_payments table
+    const creditPaymentsTable = database.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='credit_payments'");
+    if (creditPaymentsTable.length === 0 || creditPaymentsTable[0].values.length === 0) {
+        console.log('Running migration: Creating credit_payments table...');
+
+        database.exec(`
+            CREATE TABLE IF NOT EXISTS credit_payments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                creditor_name TEXT NOT NULL,
+                payment_date DATE NOT NULL,
+                amount REAL NOT NULL,
+                notes TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `);
+
+        database.exec(`CREATE INDEX IF NOT EXISTS idx_credit_payments_date ON credit_payments(payment_date DESC)`);
+        database.exec(`CREATE INDEX IF NOT EXISTS idx_credit_payments_creditor ON credit_payments(creditor_name, payment_date DESC)`);
+
+        console.log('Migration completed: credit_payments table created.');
+    }
 }
 
 export async function getDatabase(): Promise<Database> {
