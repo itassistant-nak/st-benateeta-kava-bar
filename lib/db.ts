@@ -129,7 +129,7 @@ function runMigrations(database: Database) {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 date DATE NOT NULL,
-                type TEXT NOT NULL CHECK(type IN ('cash_in', 'cash_out', 'correction')),
+                type TEXT NOT NULL CHECK(type IN ('cash', 'powder')),
                 amount REAL NOT NULL,
                 notes TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -141,6 +141,61 @@ function runMigrations(database: Database) {
         database.exec(`CREATE INDEX IF NOT EXISTS idx_adjustments_user ON adjustments(user_id, date DESC)`);
 
         console.log('Migration completed: Adjustments table created.');
+    }
+
+    // Migration 6: Fix adjustments table constraint (cash/powder instead of cash_in/cash_out/correction)
+    try {
+        // Check if the table has the old constraint by trying to query the table schema
+        const tableInfo = database.exec("SELECT sql FROM sqlite_master WHERE type='table' AND name='adjustments'");
+        if (tableInfo.length > 0 && tableInfo[0].values.length > 0) {
+            const createStatement = tableInfo[0].values[0][0] as string;
+            if (createStatement && createStatement.includes('cash_in')) {
+                console.log('Running migration: Fixing adjustments table constraint...');
+
+                // Backup existing data
+                database.exec(`CREATE TABLE IF NOT EXISTS adjustments_backup AS SELECT * FROM adjustments`);
+
+                // Drop old table
+                database.exec(`DROP TABLE adjustments`);
+
+                // Create new table with correct constraint
+                database.exec(`
+                    CREATE TABLE adjustments (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        date DATE NOT NULL,
+                        type TEXT NOT NULL CHECK(type IN ('cash', 'powder')),
+                        amount REAL NOT NULL,
+                        notes TEXT,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    )
+                `);
+
+                // Restore data with type conversion
+                database.exec(`
+                    INSERT INTO adjustments (id, user_id, date, type, amount, notes, created_at)
+                    SELECT id, user_id, date,
+                           CASE
+                               WHEN type IN ('cash_in', 'cash_out', 'correction') THEN 'cash'
+                               ELSE type
+                           END as type,
+                           amount, notes, created_at
+                    FROM adjustments_backup
+                `);
+
+                // Drop backup
+                database.exec(`DROP TABLE adjustments_backup`);
+
+                // Recreate indexes
+                database.exec(`CREATE INDEX IF NOT EXISTS idx_adjustments_date ON adjustments(date DESC)`);
+                database.exec(`CREATE INDEX IF NOT EXISTS idx_adjustments_user ON adjustments(user_id, date DESC)`);
+
+                console.log('Migration completed: Adjustments table constraint fixed.');
+            }
+        }
+    } catch (err) {
+        console.log('Migration 6 check skipped or already applied');
     }
 }
 

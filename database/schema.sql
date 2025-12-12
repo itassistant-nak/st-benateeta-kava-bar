@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS adjustments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
   date DATE NOT NULL,
-  type TEXT NOT NULL CHECK(type IN ('cash_in', 'cash_out', 'correction')),
+  type TEXT NOT NULL CHECK(type IN ('cash', 'powder')),
   amount REAL NOT NULL,
   notes TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
