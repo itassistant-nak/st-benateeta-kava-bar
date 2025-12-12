@@ -84,6 +84,23 @@ function runMigrations(database: Database) {
 
         console.log('Migration completed: features and user_features tables created.');
     }
+
+    // Migration 3: Add opening balance columns to daily_entries
+    const dailyEntriesSchema = database.exec("PRAGMA table_info(daily_entries)");
+    if (dailyEntriesSchema.length > 0) {
+        const columns = dailyEntriesSchema[0].values.map((row: any) => row[1]);
+
+        if (!columns.includes('opening_cash')) {
+            console.log('Running migration: Adding opening balance columns to daily_entries...');
+
+            database.exec(`ALTER TABLE daily_entries ADD COLUMN opening_cash REAL DEFAULT 0`);
+            database.exec(`ALTER TABLE daily_entries ADD COLUMN opening_packets INTEGER DEFAULT 0`);
+            database.exec(`ALTER TABLE daily_entries ADD COLUMN opening_cups INTEGER DEFAULT 0`);
+            database.exec(`ALTER TABLE daily_entries ADD COLUMN opening_notes TEXT`);
+
+            console.log('Migration completed: Opening balance columns added.');
+        }
+    }
 }
 
 export async function getDatabase(): Promise<Database> {
