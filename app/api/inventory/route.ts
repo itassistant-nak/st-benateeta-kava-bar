@@ -54,15 +54,26 @@ export async function GET(request: NextRequest) {
 
         const totalUsedCups = (usedPacketsEntry * CUPS_PER_PACKET) + usedCupsEntry;
 
-        // 3. Get Powder Adjustments (in cups)
-        const adjustmentQuery = `
-            SELECT COALESCE(SUM(amount), 0) as totalAdjustments
-            FROM adjustments
-            WHERE type = 'powder'
-            ${userFilter.replace('WHERE', 'AND')}
-        `;
-        const adjustmentResult = await query<any>(adjustmentQuery, params);
-        const totalPowderAdjustments = adjustmentResult[0].totalAdjustments;
+        // 3. Get Powder Adjustments (in cups) - handle missing table gracefully
+        let totalPowderAdjustments = 0;
+        try {
+            const adjustmentQuery = `
+                SELECT COALESCE(SUM(amount), 0) as totalAdjustments
+                FROM adjustments
+                WHERE type = 'powder'
+                ${userFilter.replace('WHERE', 'AND')}
+            `;
+            const adjustmentResult = await query<any>(adjustmentQuery, params);
+            totalPowderAdjustments = adjustmentResult[0].totalAdjustments;
+        } catch (err: any) {
+            // If adjustments table doesn't exist yet, just use 0
+            if (err.message && (err.message.includes('no such table') || err.message.includes('adjustments'))) {
+                console.log('Adjustments table not found, using 0 for adjustments');
+                totalPowderAdjustments = 0;
+            } else {
+                throw err;
+            }
+        }
 
         // 4. Calculate Balance (purchased + adjustments - used)
         const balanceCups = totalPurchasedCups + totalPowderAdjustments - totalUsedCups;
