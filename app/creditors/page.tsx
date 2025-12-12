@@ -2,8 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { format, subDays } from 'date-fns';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+
+// Extend jsPDF type for autoTable
+declare module 'jspdf' {
+    interface jsPDF {
+        lastAutoTable: { finalY: number };
+    }
+}
 
 interface CreditorRecord {
     date: string;
