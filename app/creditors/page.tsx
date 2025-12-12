@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { format, subDays } from 'date-fns';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface CreditorRecord {
     date: string;
@@ -62,6 +64,60 @@ export default function CreditorsPage() {
         setEndDate(format(new Date(), 'yyyy-MM-dd'));
         setCreditorFilter('');
         setGroupFilter('');
+    };
+
+    const exportToPDF = () => {
+        if (!data || data.creditors.length === 0) return;
+
+        const doc = new jsPDF();
+
+        // Title
+        doc.setFontSize(18);
+        doc.text('ST Benateeta Kava Bar - Creditors Report', 14, 22);
+
+        // Date range
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(`Period: ${format(new Date(startDate), 'dd/MM/yyyy')} - ${format(new Date(endDate), 'dd/MM/yyyy')}`, 14, 30);
+        doc.text(`Generated: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 14, 36);
+
+        // Filters applied
+        let filterText = 'Filters: ';
+        if (creditorFilter) filterText += `Creditor: ${creditorFilter}, `;
+        if (groupFilter) filterText += `Group: ${groupFilter}, `;
+        if (filterText === 'Filters: ') filterText += 'None';
+        else filterText = filterText.slice(0, -2); // Remove trailing comma
+        doc.text(filterText, 14, 42);
+
+        // Table data
+        const tableData = data.creditors.map((record) => [
+            format(new Date(record.date), 'dd/MM/yyyy'),
+            record.creditor_name,
+            `$${record.amount.toFixed(2)}`,
+            record.bookkeeper_name || '-',
+            record.group_name || '-',
+        ]);
+
+        // Add table
+        autoTable(doc, {
+            head: [['Date', 'Creditor Name', 'Amount', 'Bookkeeper', 'Group']],
+            body: tableData,
+            startY: 48,
+            styles: { fontSize: 9 },
+            headStyles: { fillColor: [74, 144, 226] },
+            foot: [[
+                'Total',
+                `${data.count} records`,
+                `$${data.totalAmount.toFixed(2)}`,
+                '',
+                ''
+            ]],
+            footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
+        });
+
+        // Save the PDF
+        const fileName = `creditors-report-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+        doc.save(fileName);
     };
 
     return (
@@ -131,9 +187,16 @@ export default function CreditorsPage() {
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-lg)' }}>
+                <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-lg)', flexWrap: 'wrap' }}>
                     <button className="btn btn-secondary" onClick={clearFilters}>
                         Clear Filters
+                    </button>
+                    <button
+                        className="btn btn-primary"
+                        onClick={exportToPDF}
+                        disabled={!data || data.creditors.length === 0}
+                    >
+                        📄 Export PDF
                     </button>
                 </div>
 
