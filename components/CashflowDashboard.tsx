@@ -5,6 +5,14 @@ import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import Link from 'next/link';
 import AdjustmentForm from './AdjustmentForm';
 
+interface Adjustment {
+    id: number;
+    date: string;
+    type: string;
+    amount: number;
+    notes: string;
+}
+
 interface CashflowSummary {
     period: string;
     startDate: string;
@@ -31,6 +39,7 @@ interface CashflowSummary {
         cash: number;
         powder: number;
     };
+    adjustmentsList: Adjustment[];
 }
 
 export default function CashflowDashboard() {
@@ -216,38 +225,92 @@ export default function CashflowDashboard() {
                 </div>
             </div>
 
-            {/* Daily Breakdown Table */}
-            {summary.entries.length > 0 && (
-                <>
-                    <h3 style={{ marginBottom: '16px', fontSize: '18px' }}>Daily Breakdown</h3>
-                    <div style={{ overflowX: 'auto' }}>
-                        <table className="table">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Income</th>
-                                    <th>Expenses</th>
-                                    <th>Net Cashflow</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {summary.entries.map((entry, index) => (
-                                    <tr key={index}>
-                                        <td>{format(new Date(entry.date), 'MMM dd, yyyy')}</td>
-                                        <td style={{ color: '#10b981' }}>${entry.income.toFixed(2)}</td>
-                                        <td style={{ color: '#ef4444' }}>${entry.expenses.toFixed(2)}</td>
-                                        <td style={{
-                                            color: entry.netCashflow >= 0 ? '#10b981' : '#ef4444',
-                                            fontWeight: 'bold'
-                                        }}>
-                                            ${entry.netCashflow.toFixed(2)}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </>
+            {/* Cashflow Log Table */}
+            <h3 style={{ marginBottom: '16px', fontSize: '18px' }}>📋 Cashflow Log</h3>
+            <div style={{ overflowX: 'auto', marginBottom: '32px' }}>
+                <table className="table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th style={{ textAlign: 'right' }}>In (+)</th>
+                            <th style={{ textAlign: 'right' }}>Out (-)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {/* Daily entries - Cash Received */}
+                        {summary.entries.map((entry, index) => (
+                            <tr key={`income-${index}`}>
+                                <td>{format(new Date(entry.date), 'MMM dd, yyyy')}</td>
+                                <td><span style={{ color: '#10b981' }}>💵 Cash Received</span></td>
+                                <td>Daily sales</td>
+                                <td style={{ textAlign: 'right', color: '#10b981' }}>${entry.income.toFixed(2)}</td>
+                                <td style={{ textAlign: 'right', color: '#666' }}>-</td>
+                            </tr>
+                        ))}
+
+                        {/* Daily entries - Expenses */}
+                        {summary.entries.filter(e => e.expenses > 0).map((entry, index) => (
+                            <tr key={`expense-${index}`}>
+                                <td>{format(new Date(entry.date), 'MMM dd, yyyy')}</td>
+                                <td><span style={{ color: '#ef4444' }}>💸 Expenses</span></td>
+                                <td>Operational expenses</td>
+                                <td style={{ textAlign: 'right', color: '#666' }}>-</td>
+                                <td style={{ textAlign: 'right', color: '#ef4444' }}>${entry.expenses.toFixed(2)}</td>
+                            </tr>
+                        ))}
+
+                        {/* Adjustments */}
+                        {(summary.adjustmentsList || []).map((adj, index) => (
+                            <tr key={`adj-${index}`} style={{ backgroundColor: adj.amount >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)' }}>
+                                <td>{format(new Date(adj.date), 'MMM dd, yyyy')}</td>
+                                <td>
+                                    <span style={{ color: adj.amount >= 0 ? '#10b981' : '#ef4444' }}>
+                                        {adj.amount >= 0 ? '📈 Adjustment (In)' : '📉 Adjustment (Out)'}
+                                    </span>
+                                </td>
+                                <td>{adj.notes || 'Cash adjustment'}</td>
+                                <td style={{ textAlign: 'right', color: '#10b981' }}>
+                                    {adj.amount >= 0 ? `$${adj.amount.toFixed(2)}` : '-'}
+                                </td>
+                                <td style={{ textAlign: 'right', color: '#ef4444' }}>
+                                    {adj.amount < 0 ? `$${Math.abs(adj.amount).toFixed(2)}` : '-'}
+                                </td>
+                            </tr>
+                        ))}
+
+                        {/* Summary Row */}
+                        <tr style={{ backgroundColor: '#2a2a2a', fontWeight: 'bold' }}>
+                            <td colSpan={3} style={{ textAlign: 'right' }}>TOTALS:</td>
+                            <td style={{ textAlign: 'right', color: '#10b981' }}>
+                                ${(summary.income.totalCashInHand + Math.max(0, summary.adjustments?.cash || 0)).toFixed(2)}
+                            </td>
+                            <td style={{ textAlign: 'right', color: '#ef4444' }}>
+                                ${(summary.expenses.total + Math.abs(Math.min(0, summary.adjustments?.cash || 0))).toFixed(2)}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            {/* Outstanding Credits Section */}
+            {(summary.outstandingCredits || summary.income.totalCredits) > 0 && (
+                <div style={{
+                    padding: '16px',
+                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    borderRadius: '12px',
+                    border: '1px solid #f59e0b',
+                    marginBottom: '32px'
+                }}>
+                    <h4 style={{ color: '#f59e0b', marginBottom: '8px' }}>⏳ Outstanding Credits (Not Yet Collected)</h4>
+                    <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#f59e0b', margin: 0 }}>
+                        ${(summary.outstandingCredits || summary.income.totalCredits).toFixed(2)}
+                    </p>
+                    <p style={{ fontSize: '12px', color: '#888', marginTop: '8px' }}>
+                        This amount is owed but not yet received. It will be added to cash balance when collected.
+                    </p>
+                </div>
             )}
 
             {/* Visual Chart Placeholder */}

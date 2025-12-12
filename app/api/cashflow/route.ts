@@ -240,6 +240,7 @@ export async function GET(request: NextRequest) {
                 cash: totalCashAdjustments,
                 powder: totalPowderAdjustments
             },
+            adjustmentsList: adjustments.filter((a: any) => a.type === 'cash'), // List of cash adjustments for log
             outstandingCredits: totalCredits, // Separate field for clarity
             netCashflow, // Actual cash balance (excluding credits)
             entries
