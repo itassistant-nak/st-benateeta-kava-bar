@@ -112,6 +112,15 @@ export default function Navigation() {
                     Cashflow
                 </Link>
             )}
+            {access.dashboard && (
+                <Link
+                    href="/creditors"
+                    className={`btn btn-secondary ${isActive('/creditors') ? 'active' : ''}`}
+                    style={isActive('/creditors') ? { borderColor: 'var(--color-primary)' } : {}}
+                >
+                    Creditors
+                </Link>
+            )}
             {access.admin && (
                 <Link
                     href="/admin"
@@ -247,6 +256,15 @@ export default function Navigation() {
                                     style={{ justifyContent: 'flex-start' }}
                                 >
                                     💰 Cashflow
+                                </Link>
+                            )}
+                            {access.dashboard && (
+                                <Link
+                                    href="/creditors"
+                                    className={`btn ${isActive('/creditors') ? 'btn-primary' : 'btn-secondary'}`}
+                                    style={{ justifyContent: 'flex-start' }}
+                                >
+                                    💳 Creditors
                                 </Link>
                             )}
                             {access.admin && (

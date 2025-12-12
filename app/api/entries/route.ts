@@ -14,10 +14,15 @@ interface DailyEntry {
     group_name: string | null;
     cash_in_hand: number;
     credits: number;
+    credit_entries: string | null; // JSON string of {name, amount}[]
     waiter_expense: number;
+    waiter_name: string | null;
     servers_expense: number;
+    servers_names: string | null; // JSON string of string[]
     bookkeeping_expense: number;
+    bookkeeper_name: string | null;
     other_expenses: number;
+    additional_payments: string | null; // JSON string of {name, amount}[]
     packets_used: number;
     cups_used: number;
     powder_cost: number;
@@ -92,10 +97,15 @@ export async function POST(request: NextRequest) {
             group_name = null,
             cash_in_hand = 0,
             credits = 0,
+            credit_entries = '[]',
             waiter_expense = 0,
+            waiter_name = null,
             servers_expense = 0,
+            servers_names = '[]',
             bookkeeping_expense = 0,
+            bookkeeper_name = null,
             other_expenses = 0,
+            additional_payments = '[]',
             packets_used = 0,
             cups_used = 0,
             notes = null,
@@ -125,64 +135,44 @@ export async function POST(request: NextRequest) {
         let isUpdate = false;
 
         if (existingEntries.length > 0) {
-            // Update existing entry - try with opening columns first, fall back if they don't exist
+            // Update existing entry
             isUpdate = true;
-            try {
-                await execute(
-                    `UPDATE daily_entries SET
-                        group_name = ?, cash_in_hand = ?, credits = ?, waiter_expense = ?,
-                        servers_expense = ?, bookkeeping_expense = ?, other_expenses = ?,
-                        packets_used = ?, cups_used = ?, powder_cost = ?, profit = ?, notes = ?,
-                        opening_cash = ?, opening_packets = ?, opening_cups = ?, opening_notes = ?
-                    WHERE user_id = ? AND date = ?`,
-                    [group_name, cash_in_hand, credits, waiter_expense, servers_expense,
-                        bookkeeping_expense, other_expenses, packets_used, cups_used,
-                        powderCost, profit, notes, opening_cash, opening_packets, opening_cups, opening_notes, session.userId, date]
-                );
-            } catch (err: any) {
-                // If opening columns don't exist, update without them
-                if (err.message && err.message.includes('no column named opening')) {
-                    await execute(
-                        `UPDATE daily_entries SET
-                            group_name = ?, cash_in_hand = ?, credits = ?, waiter_expense = ?,
-                            servers_expense = ?, bookkeeping_expense = ?, other_expenses = ?,
-                            packets_used = ?, cups_used = ?, powder_cost = ?, profit = ?, notes = ?
-                        WHERE user_id = ? AND date = ?`,
-                        [group_name, cash_in_hand, credits, waiter_expense, servers_expense,
-                            bookkeeping_expense, other_expenses, packets_used, cups_used,
-                            powderCost, profit, notes, session.userId, date]
-                    );
-                } else {
-                    throw err;
-                }
-            }
+            await execute(
+                `UPDATE daily_entries SET
+                    group_name = ?, cash_in_hand = ?, credits = ?, credit_entries = ?,
+                    waiter_expense = ?, waiter_name = ?, servers_expense = ?, servers_names = ?,
+                    bookkeeping_expense = ?, bookkeeper_name = ?, other_expenses = ?, additional_payments = ?,
+                    packets_used = ?, cups_used = ?, powder_cost = ?, profit = ?, notes = ?,
+                    opening_cash = ?, opening_packets = ?, opening_cups = ?, opening_notes = ?
+                WHERE user_id = ? AND date = ?`,
+                [group_name, cash_in_hand, credits, credit_entries,
+                    waiter_expense, waiter_name, servers_expense, servers_names,
+                    bookkeeping_expense, bookkeeper_name, other_expenses, additional_payments,
+                    packets_used, cups_used, powderCost, profit, notes,
+                    opening_cash, opening_packets, opening_cups, opening_notes,
+                    session.userId, date]
+            );
             const updated = await query<DailyEntry>(
                 'SELECT * FROM daily_entries WHERE user_id = ? AND date = ?',
                 [session.userId, date]
             );
             entry = updated[0];
         } else {
-            // Create new entry - try with opening columns first, fall back if they don't exist
-            try {
-                await execute(
-                    `INSERT INTO daily_entries
-                    (user_id, date, group_name, cash_in_hand, credits, waiter_expense, servers_expense, bookkeeping_expense, other_expenses, packets_used, cups_used, powder_cost, profit, notes, opening_cash, opening_packets, opening_cups, opening_notes)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                    [session.userId, date, group_name, cash_in_hand, credits, waiter_expense, servers_expense, bookkeeping_expense, other_expenses, packets_used, cups_used, powderCost, profit, notes, opening_cash, opening_packets, opening_cups, opening_notes]
-                );
-            } catch (err: any) {
-                // If opening columns don't exist, insert without them
-                if (err.message && err.message.includes('no column named opening')) {
-                    await execute(
-                        `INSERT INTO daily_entries
-                        (user_id, date, group_name, cash_in_hand, credits, waiter_expense, servers_expense, bookkeeping_expense, other_expenses, packets_used, cups_used, powder_cost, profit, notes)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                        [session.userId, date, group_name, cash_in_hand, credits, waiter_expense, servers_expense, bookkeeping_expense, other_expenses, packets_used, cups_used, powderCost, profit, notes]
-                    );
-                } else {
-                    throw err;
-                }
-            }
+            // Create new entry
+            await execute(
+                `INSERT INTO daily_entries
+                (user_id, date, group_name, cash_in_hand, credits, credit_entries,
+                waiter_expense, waiter_name, servers_expense, servers_names,
+                bookkeeping_expense, bookkeeper_name, other_expenses, additional_payments,
+                packets_used, cups_used, powder_cost, profit, notes,
+                opening_cash, opening_packets, opening_cups, opening_notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [session.userId, date, group_name, cash_in_hand, credits, credit_entries,
+                    waiter_expense, waiter_name, servers_expense, servers_names,
+                    bookkeeping_expense, bookkeeper_name, other_expenses, additional_payments,
+                    packets_used, cups_used, powderCost, profit, notes,
+                    opening_cash, opening_packets, opening_cups, opening_notes]
+            );
             const id = await getLastInsertId();
             const newEntry = await query<DailyEntry>('SELECT * FROM daily_entries WHERE id = ?', [id]);
             entry = newEntry[0];
@@ -220,10 +210,15 @@ export async function PATCH(request: NextRequest) {
                 group_name = null,
                 cash_in_hand = 0,
                 credits = 0,
+                credit_entries = '[]',
                 waiter_expense = 0,
+                waiter_name = null,
                 servers_expense = 0,
+                servers_names = '[]',
                 bookkeeping_expense = 0,
+                bookkeeper_name = null,
                 other_expenses = 0,
+                additional_payments = '[]',
                 packets_used = 0,
                 cups_used = 0,
                 notes = null,
@@ -238,9 +233,17 @@ export async function PATCH(request: NextRequest) {
 
             await execute(
                 `INSERT INTO daily_entries
-                (user_id, date, group_name, cash_in_hand, credits, waiter_expense, servers_expense, bookkeeping_expense, other_expenses, packets_used, cups_used, powder_cost, profit, notes, opening_cash, opening_packets, opening_cups, opening_notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [session.userId, date, group_name, cash_in_hand, credits, waiter_expense, servers_expense, bookkeeping_expense, other_expenses, packets_used, cups_used, powderCost, profit, notes, opening_cash, opening_packets, opening_cups, opening_notes]
+                (user_id, date, group_name, cash_in_hand, credits, credit_entries,
+                waiter_expense, waiter_name, servers_expense, servers_names,
+                bookkeeping_expense, bookkeeper_name, other_expenses, additional_payments,
+                packets_used, cups_used, powder_cost, profit, notes,
+                opening_cash, opening_packets, opening_cups, opening_notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [session.userId, date, group_name, cash_in_hand, credits, credit_entries,
+                    waiter_expense, waiter_name, servers_expense, servers_names,
+                    bookkeeping_expense, bookkeeper_name, other_expenses, additional_payments,
+                    packets_used, cups_used, powderCost, profit, notes,
+                    opening_cash, opening_packets, opening_cups, opening_notes]
             );
             const id = await getLastInsertId();
             const newEntry = await query<DailyEntry>('SELECT * FROM daily_entries WHERE id = ?', [id]);
@@ -262,10 +265,15 @@ export async function PATCH(request: NextRequest) {
         checkField('group_name', 'group_name');
         checkField('cash_in_hand', 'cash_in_hand');
         checkField('credits', 'credits');
+        checkField('credit_entries', 'credit_entries');
         checkField('waiter_expense', 'waiter_expense');
+        checkField('waiter_name', 'waiter_name');
         checkField('servers_expense', 'servers_expense');
+        checkField('servers_names', 'servers_names');
         checkField('bookkeeping_expense', 'bookkeeping_expense');
+        checkField('bookkeeper_name', 'bookkeeper_name');
         checkField('other_expenses', 'other_expenses');
+        checkField('additional_payments', 'additional_payments');
         checkField('packets_used', 'packets_used');
         checkField('cups_used', 'cups_used');
         checkField('notes', 'notes');

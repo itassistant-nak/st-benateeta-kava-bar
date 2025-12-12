@@ -100,6 +100,19 @@ function runMigrations(database: Database) {
 
             console.log('Migration completed: Opening balance columns added.');
         }
+
+        // Migration 4: Add credit_entries, bookkeeper_name, waiter_name, servers_names, additional_payments columns
+        if (!columns.includes('credit_entries')) {
+            console.log('Running migration: Adding credit and staff columns to daily_entries...');
+
+            database.exec(`ALTER TABLE daily_entries ADD COLUMN credit_entries TEXT DEFAULT '[]'`);
+            database.exec(`ALTER TABLE daily_entries ADD COLUMN bookkeeper_name TEXT`);
+            database.exec(`ALTER TABLE daily_entries ADD COLUMN waiter_name TEXT`);
+            database.exec(`ALTER TABLE daily_entries ADD COLUMN servers_names TEXT DEFAULT '[]'`);
+            database.exec(`ALTER TABLE daily_entries ADD COLUMN additional_payments TEXT DEFAULT '[]'`);
+
+            console.log('Migration completed: Credit and staff columns added.');
+        }
     }
 }
 
