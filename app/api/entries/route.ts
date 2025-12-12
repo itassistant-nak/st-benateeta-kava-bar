@@ -125,32 +125,64 @@ export async function POST(request: NextRequest) {
         let isUpdate = false;
 
         if (existingEntries.length > 0) {
-            // Update existing entry
+            // Update existing entry - try with opening columns first, fall back if they don't exist
             isUpdate = true;
-            await execute(
-                `UPDATE daily_entries SET
-                    group_name = ?, cash_in_hand = ?, credits = ?, waiter_expense = ?,
-                    servers_expense = ?, bookkeeping_expense = ?, other_expenses = ?,
-                    packets_used = ?, cups_used = ?, powder_cost = ?, profit = ?, notes = ?,
-                    opening_cash = ?, opening_packets = ?, opening_cups = ?, opening_notes = ?
-                WHERE user_id = ? AND date = ?`,
-                [group_name, cash_in_hand, credits, waiter_expense, servers_expense,
-                    bookkeeping_expense, other_expenses, packets_used, cups_used,
-                    powderCost, profit, notes, opening_cash, opening_packets, opening_cups, opening_notes, session.userId, date]
-            );
+            try {
+                await execute(
+                    `UPDATE daily_entries SET
+                        group_name = ?, cash_in_hand = ?, credits = ?, waiter_expense = ?,
+                        servers_expense = ?, bookkeeping_expense = ?, other_expenses = ?,
+                        packets_used = ?, cups_used = ?, powder_cost = ?, profit = ?, notes = ?,
+                        opening_cash = ?, opening_packets = ?, opening_cups = ?, opening_notes = ?
+                    WHERE user_id = ? AND date = ?`,
+                    [group_name, cash_in_hand, credits, waiter_expense, servers_expense,
+                        bookkeeping_expense, other_expenses, packets_used, cups_used,
+                        powderCost, profit, notes, opening_cash, opening_packets, opening_cups, opening_notes, session.userId, date]
+                );
+            } catch (err: any) {
+                // If opening columns don't exist, update without them
+                if (err.message && err.message.includes('no column named opening')) {
+                    await execute(
+                        `UPDATE daily_entries SET
+                            group_name = ?, cash_in_hand = ?, credits = ?, waiter_expense = ?,
+                            servers_expense = ?, bookkeeping_expense = ?, other_expenses = ?,
+                            packets_used = ?, cups_used = ?, powder_cost = ?, profit = ?, notes = ?
+                        WHERE user_id = ? AND date = ?`,
+                        [group_name, cash_in_hand, credits, waiter_expense, servers_expense,
+                            bookkeeping_expense, other_expenses, packets_used, cups_used,
+                            powderCost, profit, notes, session.userId, date]
+                    );
+                } else {
+                    throw err;
+                }
+            }
             const updated = await query<DailyEntry>(
                 'SELECT * FROM daily_entries WHERE user_id = ? AND date = ?',
                 [session.userId, date]
             );
             entry = updated[0];
         } else {
-            // Create new entry
-            await execute(
-                `INSERT INTO daily_entries
-                (user_id, date, group_name, cash_in_hand, credits, waiter_expense, servers_expense, bookkeeping_expense, other_expenses, packets_used, cups_used, powder_cost, profit, notes, opening_cash, opening_packets, opening_cups, opening_notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [session.userId, date, group_name, cash_in_hand, credits, waiter_expense, servers_expense, bookkeeping_expense, other_expenses, packets_used, cups_used, powderCost, profit, notes, opening_cash, opening_packets, opening_cups, opening_notes]
-            );
+            // Create new entry - try with opening columns first, fall back if they don't exist
+            try {
+                await execute(
+                    `INSERT INTO daily_entries
+                    (user_id, date, group_name, cash_in_hand, credits, waiter_expense, servers_expense, bookkeeping_expense, other_expenses, packets_used, cups_used, powder_cost, profit, notes, opening_cash, opening_packets, opening_cups, opening_notes)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [session.userId, date, group_name, cash_in_hand, credits, waiter_expense, servers_expense, bookkeeping_expense, other_expenses, packets_used, cups_used, powderCost, profit, notes, opening_cash, opening_packets, opening_cups, opening_notes]
+                );
+            } catch (err: any) {
+                // If opening columns don't exist, insert without them
+                if (err.message && err.message.includes('no column named opening')) {
+                    await execute(
+                        `INSERT INTO daily_entries
+                        (user_id, date, group_name, cash_in_hand, credits, waiter_expense, servers_expense, bookkeeping_expense, other_expenses, packets_used, cups_used, powder_cost, profit, notes)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        [session.userId, date, group_name, cash_in_hand, credits, waiter_expense, servers_expense, bookkeeping_expense, other_expenses, packets_used, cups_used, powderCost, profit, notes]
+                    );
+                } else {
+                    throw err;
+                }
+            }
             const id = await getLastInsertId();
             const newEntry = await query<DailyEntry>('SELECT * FROM daily_entries WHERE id = ?', [id]);
             entry = newEntry[0];
