@@ -216,9 +216,11 @@ export async function GET(request: NextRequest) {
             .reduce((sum: number, a: any) => sum + (Number(a.amount) || 0), 0);
 
         // Calculate Totals
-        const totalIncome = totalCashInHand + totalCredits;
+        // Cash in Hand is actual cash received (excluding credits)
+        // Credits are outstanding amounts not yet collected
+        const totalIncome = totalCashInHand; // Only actual cash received
         const totalExpenses = totalPowderPurchases + totalOperationalExpenses;
-        const netCashflow = totalIncome - totalExpenses + totalCashAdjustments;
+        const netCashflow = totalCashInHand - totalExpenses + totalCashAdjustments; // Cash balance only
 
         return NextResponse.json({
             period,
@@ -226,8 +228,8 @@ export async function GET(request: NextRequest) {
             endDate: endDate || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
             income: {
                 totalCashInHand,
-                totalCredits,
-                total: totalIncome
+                totalCredits, // Outstanding credits (not yet collected)
+                total: totalIncome // Only cash in hand
             },
             expenses: {
                 powderPurchases: totalPowderPurchases,
@@ -238,7 +240,8 @@ export async function GET(request: NextRequest) {
                 cash: totalCashAdjustments,
                 powder: totalPowderAdjustments
             },
-            netCashflow,
+            outstandingCredits: totalCredits, // Separate field for clarity
+            netCashflow, // Actual cash balance (excluding credits)
             entries
         });
     } catch (error: any) {

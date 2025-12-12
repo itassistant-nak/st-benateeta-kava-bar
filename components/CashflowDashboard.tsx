@@ -20,6 +20,7 @@ interface CashflowSummary {
         total: number;
     };
     netCashflow: number;
+    outstandingCredits: number;
     entries: Array<{
         date: string;
         income: number;
@@ -133,24 +134,23 @@ export default function CashflowDashboard() {
             {/* Summary Cards */}
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
+                gridTemplateColumns: 'repeat(2, 1fr)',
                 gap: '12px',
-                marginBottom: '32px'
+                marginBottom: '16px'
             }}>
-                {/* Total Income */}
+                {/* Cash Received */}
                 <div className="stat-card" style={{
                     padding: '16px',
                     backgroundColor: '#1a1a1a',
                     borderRadius: '12px',
                     border: '1px solid #2a2a2a'
                 }}>
-                    <div style={{ color: '#888', fontSize: '12px', marginBottom: '8px' }}>Total Income</div>
+                    <div style={{ color: '#888', fontSize: '12px', marginBottom: '8px' }}>💵 Cash Received</div>
                     <div style={{ fontSize: 'clamp(18px, 4vw, 28px)', fontWeight: 'bold', color: '#10b981', marginBottom: '8px' }}>
-                        ${summary.income.total.toFixed(2)}
+                        ${summary.income.totalCashInHand.toFixed(2)}
                     </div>
                     <div style={{ fontSize: '10px', color: '#666', lineHeight: '1.4' }}>
-                        Cash: ${summary.income.totalCashInHand.toFixed(2)}<br />
-                        Credits: ${summary.income.totalCredits.toFixed(2)}
+                        Actual cash collected
                     </div>
                 </div>
 
@@ -161,7 +161,7 @@ export default function CashflowDashboard() {
                     borderRadius: '12px',
                     border: '1px solid #2a2a2a'
                 }}>
-                    <div style={{ color: '#888', fontSize: '12px', marginBottom: '8px' }}>Total Expenses</div>
+                    <div style={{ color: '#888', fontSize: '12px', marginBottom: '8px' }}>💸 Total Expenses</div>
                     <div style={{ fontSize: 'clamp(18px, 4vw, 28px)', fontWeight: 'bold', color: '#ef4444', marginBottom: '8px' }}>
                         ${summary.expenses.total.toFixed(2)}
                     </div>
@@ -170,15 +170,38 @@ export default function CashflowDashboard() {
                         Operations: ${summary.expenses.operationalExpenses.toFixed(2)}
                     </div>
                 </div>
+            </div>
 
-                {/* Net Cashflow */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '12px',
+                marginBottom: '32px'
+            }}>
+                {/* Outstanding Credits */}
                 <div className="stat-card" style={{
                     padding: '16px',
                     backgroundColor: '#1a1a1a',
                     borderRadius: '12px',
-                    border: '1px solid #2a2a2a'
+                    border: '1px solid #f59e0b'
                 }}>
-                    <div style={{ color: '#888', fontSize: '12px', marginBottom: '8px' }}>Net Cashflow</div>
+                    <div style={{ color: '#f59e0b', fontSize: '12px', marginBottom: '8px' }}>⏳ Outstanding Credits</div>
+                    <div style={{ fontSize: 'clamp(18px, 4vw, 28px)', fontWeight: 'bold', color: '#f59e0b', marginBottom: '8px' }}>
+                        ${(summary.outstandingCredits || summary.income.totalCredits).toFixed(2)}
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#666', lineHeight: '1.4' }}>
+                        Not yet collected
+                    </div>
+                </div>
+
+                {/* Net Cash Balance */}
+                <div className="stat-card" style={{
+                    padding: '16px',
+                    backgroundColor: '#1a1a1a',
+                    borderRadius: '12px',
+                    border: summary.netCashflow >= 0 ? '2px solid #10b981' : '2px solid #ef4444'
+                }}>
+                    <div style={{ color: '#888', fontSize: '12px', marginBottom: '8px' }}>🏦 Net Cash Balance</div>
                     <div style={{
                         fontSize: 'clamp(18px, 4vw, 28px)',
                         fontWeight: 'bold',
@@ -188,7 +211,7 @@ export default function CashflowDashboard() {
                         ${summary.netCashflow.toFixed(2)}
                     </div>
                     <div style={{ fontSize: '10px', color: '#666', lineHeight: '1.4' }}>
-                        {summary.netCashflow >= 0 ? 'Positive' : 'Negative'} cashflow
+                        Cash received − Expenses
                     </div>
                 </div>
             </div>
