@@ -118,6 +118,30 @@ function runMigrations(database: Database) {
             console.log('Migration completed: Credit and staff columns added.');
         }
     }
+
+    // Migration 5: Create adjustments table if it doesn't exist
+    const adjustmentsTable = database.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='adjustments'");
+    if (adjustmentsTable.length === 0 || adjustmentsTable[0].values.length === 0) {
+        console.log('Running migration: Creating adjustments table...');
+
+        database.exec(`
+            CREATE TABLE IF NOT EXISTS adjustments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                date DATE NOT NULL,
+                type TEXT NOT NULL CHECK(type IN ('cash_in', 'cash_out', 'correction')),
+                amount REAL NOT NULL,
+                notes TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `);
+
+        database.exec(`CREATE INDEX IF NOT EXISTS idx_adjustments_date ON adjustments(date DESC)`);
+        database.exec(`CREATE INDEX IF NOT EXISTS idx_adjustments_user ON adjustments(user_id, date DESC)`);
+
+        console.log('Migration completed: Adjustments table created.');
+    }
 }
 
 export async function getDatabase(): Promise<Database> {

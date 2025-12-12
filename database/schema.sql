@@ -81,7 +81,23 @@ CREATE TABLE IF NOT EXISTS powder_purchases (
 CREATE INDEX IF NOT EXISTS idx_powder_purchases_date ON powder_purchases(purchase_date DESC);
 CREATE INDEX IF NOT EXISTS idx_powder_purchases_user ON powder_purchases(user_id, purchase_date DESC);
 
+-- Adjustments table (for cashflow adjustments)
+CREATE TABLE IF NOT EXISTS adjustments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  date DATE NOT NULL,
+  type TEXT NOT NULL CHECK(type IN ('cash_in', 'cash_out', 'correction')),
+  amount REAL NOT NULL,
+  notes TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Indexes for adjustments
+CREATE INDEX IF NOT EXISTS idx_adjustments_date ON adjustments(date DESC);
+CREATE INDEX IF NOT EXISTS idx_adjustments_user ON adjustments(user_id, date DESC);
+
 -- Insert default admin user (password: admin123)
 -- Hash generated with bcrypt for password 'admin123'
-INSERT OR IGNORE INTO users (id, username, password_hash, role) 
+INSERT OR IGNORE INTO users (id, username, password_hash, role)
 VALUES (1, 'admin', '$2b$10$rcCB0aW8qWWAEkZpeXfRA.AjcNlNZSBqn0nSsQTHiTjdCdciON/96', 'admin');
