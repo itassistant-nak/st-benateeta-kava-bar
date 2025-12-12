@@ -88,7 +88,7 @@ function runMigrations(database: Database) {
     // Migration 3: Add opening balance columns to daily_entries
     const dailyEntriesSchema = database.exec("PRAGMA table_info(daily_entries)");
     if (dailyEntriesSchema.length > 0) {
-        const columns = dailyEntriesSchema[0].values.map((row: any) => row[1]);
+        let columns = dailyEntriesSchema[0].values.map((row: any) => row[1]);
 
         if (!columns.includes('opening_cash')) {
             console.log('Running migration: Adding opening balance columns to daily_entries...');
@@ -100,6 +100,10 @@ function runMigrations(database: Database) {
 
             console.log('Migration completed: Opening balance columns added.');
         }
+
+        // Re-fetch columns for Migration 4
+        const updatedSchema = database.exec("PRAGMA table_info(daily_entries)");
+        columns = updatedSchema[0].values.map((row: any) => row[1]);
 
         // Migration 4: Add credit_entries, bookkeeper_name, waiter_name, servers_names, additional_payments columns
         if (!columns.includes('credit_entries')) {
