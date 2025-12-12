@@ -171,80 +171,54 @@ export async function GET(request: NextRequest) {
         const totalOperationalExpenses = operationalData[0].totalOperational;
         const totalPowderPurchases = purchaseData[0].totalPurchases;
 
-        // Fetch Adjustments
-        let adjSql = 'SELECT * FROM adjustments WHERE 1=1';
-        const adjParams: any[] = [];
-
-        if (session.role !== 'admin') {
-            adjSql += ' AND user_id = ?';
-            adjParams.push(session.userId);
-        } else if (userId) {
-            adjSql += ' AND user_id = ?';
-            adjParams.push(parseInt(userId));
-        }
-
-        if (startDate) {
-            adjSql += ' AND date >= ?';
-            adjParams.push(startDate);
-        } else {
-            const now = new Date();
-            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-            adjSql += ' AND date >= ?';
-            adjParams.push(firstDay.toISOString().split('T')[0]);
-        }
-
-        if (endDate) {
-            adjSql += ' AND date <= ?';
-            adjParams.push(endDate);
-        } else {
-            const now = new Date();
-            const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-            adjSql += ' AND date <= ?';
-            adjParams.push(lastDay.toISOString().split('T')[0]);
-        }
+        const now = new Date();
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        adjSql += ' AND date <= ?';
+        adjParams.push(lastDay.toISOString().split('T')[0]);
+    }
 
         const adjustments = await query<any>(adjSql, adjParams);
 
-        // Calculate Adjustment Totals
-        const totalCashAdjustments = adjustments
-            .filter((a: any) => a.type === 'cash')
-            .reduce((sum: number, a: any) => sum + (Number(a.amount) || 0), 0);
+    // Calculate Adjustment Totals
+    const totalCashAdjustments = adjustments
+        .filter((a: any) => a.type === 'cash')
+        .reduce((sum: number, a: any) => sum + (Number(a.amount) || 0), 0);
 
-        const totalPowderAdjustments = adjustments
-            .filter((a: any) => a.type === 'powder')
-            .reduce((sum: number, a: any) => sum + (Number(a.amount) || 0), 0);
+    const totalPowderAdjustments = adjustments
+        .filter((a: any) => a.type === 'powder')
+        .reduce((sum: number, a: any) => sum + (Number(a.amount) || 0), 0);
 
-        // Calculate Totals
-        const totalIncome = totalCashInHand + totalCredits;
-        const totalExpenses = totalPowderPurchases + totalOperationalExpenses;
-        const netCashflow = totalIncome - totalExpenses + totalCashAdjustments;
+    // Calculate Totals
+    const totalIncome = totalCashInHand + totalCredits;
+    const totalExpenses = totalPowderPurchases + totalOperationalExpenses;
+    const netCashflow = totalIncome - totalExpenses + totalCashAdjustments;
 
-        return NextResponse.json({
-            period,
-            startDate: startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-            endDate: endDate || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
-            income: {
-                totalCashInHand,
-                totalCredits,
-                total: totalIncome
-            },
-            expenses: {
-                powderPurchases: totalPowderPurchases,
-                operationalExpenses: totalOperationalExpenses,
-                total: totalExpenses
-            },
-            adjustments: {
-                cash: totalCashAdjustments,
-                powder: totalPowderAdjustments
-            },
-            netCashflow,
-            entries
-        });
-    } catch (error: any) {
-        console.error('Get cashflow error:', error);
-        return NextResponse.json(
-            { error: error.message || 'Internal server error' },
-            { status: error.message === 'Unauthorized' ? 401 : 500 }
-        );
-    }
+    return NextResponse.json({
+        period,
+        startDate: startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+        endDate: endDate || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
+        income: {
+            totalCashInHand,
+            totalCredits,
+            total: totalIncome
+        },
+        expenses: {
+            powderPurchases: totalPowderPurchases,
+            operationalExpenses: totalOperationalExpenses,
+            total: totalExpenses
+        },
+        adjustments: {
+            cash: totalCashAdjustments,
+            powder: totalPowderAdjustments
+        },
+        netCashflow,
+        entries
+    });
+} catch (error: any) {
+    console.error('Get cashflow error:', error);
+    return NextResponse.json(
+        { error: error.message || 'Internal server error' },
+        { status: error.message === 'Unauthorized' ? 401 : 500 }
+    );
+}
 }
