@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "migrate": "tsx scripts/migrate-cashflow.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -14,18 +15,27 @@
     "next": "16.0.7",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "recharts": "^3.5.1",
     "sql.js": "^1.13.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^7.6.13",
+    "@types/d3-array": "^3.2.2",
+    "@types/d3-ease": "^3.0.2",
+    "@types/d3-interpolate": "^3.0.4",
+    "@types/d3-scale": "^4.0.9",
+    "@types/d3-shape": "^3.1.7",
+    "@types/d3-timer": "^3.0.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/sql.js": "^1.4.9",
+    "better-sqlite3": "^11.8.1",
     "eslint": "^9",
     "eslint-config-next": "16.0.7",
     "sharp": "^0.34.5",
+    "tsx": "^4.19.2",
     "typescript": "^5"
   }
 }

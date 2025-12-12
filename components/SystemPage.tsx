@@ -16,7 +16,7 @@ interface Backup {
 }
 
 export default function SystemPage() {
-    const [activeTab, setActiveTab] = useState<'logs' | 'backup'>('logs');
+    const [activeTab, setActiveTab] = useState<'logs' | 'backup' | 'data'>('logs');
     const [logType, setLogType] = useState<'system' | 'database'>('system');
     const [systemLogs, setSystemLogs] = useState<LogEntry[]>([]);
     const [databaseLogs, setDatabaseLogs] = useState<LogEntry[]>([]);
@@ -26,6 +26,7 @@ export default function SystemPage() {
     const [success, setSuccess] = useState('');
     const [creating, setCreating] = useState(false);
     const [restoring, setRestoring] = useState(false);
+    const [resetting, setResetting] = useState(false);
 
     const fetchLogs = async () => {
         setLoading(true);
@@ -131,6 +132,24 @@ export default function SystemPage() {
         }
     };
 
+    const resetDatabase = async () => {
+        if (!confirm('⚠️ DANGER: This will delete ALL daily entries and powder purchases. This action cannot be undone. Are you sure?')) return;
+        if (!confirm('Please confirm again. This is irreversible. Ideally, you should download a backup first.')) return;
+
+        setResetting(true);
+        setError('');
+        try {
+            const response = await fetch('/api/admin/system/reset', { method: 'POST' });
+            if (!response.ok) throw new Error('Failed to reset database');
+            const data = await response.json();
+            setSuccess(data.message);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setResetting(false);
+        }
+    };
+
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -207,6 +226,12 @@ export default function SystemPage() {
                     onClick={() => setActiveTab('backup')}
                 >
                     💾 Backup & Restore
+                </button>
+                <button
+                    className={`btn ${activeTab === 'data' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setActiveTab('data' as any)}
+                >
+                    🗄️ Data Management
                 </button>
             </div>
 
@@ -376,6 +401,31 @@ export default function SystemPage() {
                                 </table>
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* Data Management Tab */}
+            {activeTab === 'data' && (
+                <div className="card border-error">
+                    <h3 className="mb-lg text-error">⚠️ Danger Zone</h3>
+                    <p className="mb-lg">
+                        Actions here can cause permanent data loss. Please proceed with caution.
+                    </p>
+
+                    <div className="p-lg rounded" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                        <h4 className="mb-md text-error">Reset Database</h4>
+                        <p className="mb-md text-muted">
+                            This will clear <strong>ALL</strong> daily entries, powder purchases, and transaction history.
+                            Users and system settings will be preserved.
+                        </p>
+                        <button
+                            className="btn btn-danger"
+                            onClick={resetDatabase}
+                            disabled={resetting}
+                        >
+                            {resetting ? <span className="spinner" /> : '🗑️ Clear All Entries'}
+                        </button>
                     </div>
                 </div>
             )}

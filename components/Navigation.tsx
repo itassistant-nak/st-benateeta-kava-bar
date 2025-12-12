@@ -73,6 +73,15 @@ export default function Navigation() {
                     className={`btn btn-secondary ${isActive('/dashboard') ? 'active' : ''}`}
                     style={isActive('/dashboard') ? { borderColor: 'var(--color-primary)' } : {}}
                 >
+                    Daily Entry
+                </Link>
+            )}
+            {access.dashboard && (
+                <Link
+                    href="/analytics"
+                    className={`btn btn-secondary ${isActive('/analytics') ? 'active' : ''}`}
+                    style={isActive('/analytics') ? { borderColor: 'var(--color-primary)' } : {}}
+                >
                     Dashboard
                 </Link>
             )}
@@ -83,6 +92,24 @@ export default function Navigation() {
                     style={isActive('/reports') ? { borderColor: 'var(--color-primary)' } : {}}
                 >
                     Reports
+                </Link>
+            )}
+            {access.dashboard && (
+                <Link
+                    href="/opening"
+                    className={`btn btn-secondary ${isActive('/opening') ? 'active' : ''}`}
+                    style={isActive('/opening') ? { borderColor: 'var(--color-primary)' } : {}}
+                >
+                    Adjustments
+                </Link>
+            )}
+            {access.dashboard && (
+                <Link
+                    href="/cashflow"
+                    className={`btn btn-secondary ${isActive('/cashflow') ? 'active' : ''}`}
+                    style={isActive('/cashflow') ? { borderColor: 'var(--color-primary)' } : {}}
+                >
+                    Cashflow
                 </Link>
             )}
             {access.admin && (
@@ -183,6 +210,15 @@ export default function Navigation() {
                                     className={`btn ${isActive('/dashboard') ? 'btn-primary' : 'btn-secondary'}`}
                                     style={{ justifyContent: 'flex-start' }}
                                 >
+                                    📝 Daily Entry
+                                </Link>
+                            )}
+                            {access.dashboard && (
+                                <Link
+                                    href="/analytics"
+                                    className={`btn ${isActive('/analytics') ? 'btn-primary' : 'btn-secondary'}`}
+                                    style={{ justifyContent: 'flex-start' }}
+                                >
                                     📊 Dashboard
                                 </Link>
                             )}
@@ -193,6 +229,24 @@ export default function Navigation() {
                                     style={{ justifyContent: 'flex-start' }}
                                 >
                                     📈 Reports
+                                </Link>
+                            )}
+                            {access.dashboard && (
+                                <Link
+                                    href="/opening"
+                                    className={`btn ${isActive('/opening') ? 'btn-primary' : 'btn-secondary'}`}
+                                    style={{ justifyContent: 'flex-start' }}
+                                >
+                                    ⚙️ Adjustments
+                                </Link>
+                            )}
+                            {access.dashboard && (
+                                <Link
+                                    href="/cashflow"
+                                    className={`btn ${isActive('/cashflow') ? 'btn-primary' : 'btn-secondary'}`}
+                                    style={{ justifyContent: 'flex-start' }}
+                                >
+                                    💰 Cashflow
                                 </Link>
                             )}
                             {access.admin && (

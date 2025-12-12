@@ -126,6 +126,21 @@ export function saveDatabase() {
     writeFileSync(DB_PATH, buffer);
 }
 
+// Helper function to convert BigInt to number in objects
+function convertBigIntToNumber(obj: any): any {
+    if (obj === null || obj === undefined) return obj;
+    if (typeof obj === 'bigint') return Number(obj);
+    if (Array.isArray(obj)) return obj.map(convertBigIntToNumber);
+    if (typeof obj === 'object') {
+        const converted: any = {};
+        for (const key in obj) {
+            converted[key] = convertBigIntToNumber(obj[key]);
+        }
+        return converted;
+    }
+    return obj;
+}
+
 // Helper function to run queries
 export async function query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
     const database = await getDatabase();
@@ -134,7 +149,8 @@ export async function query<T = any>(sql: string, params: any[] = []): Promise<T
 
     const results: T[] = [];
     while (stmt.step()) {
-        results.push(stmt.getAsObject() as T);
+        const row = stmt.getAsObject();
+        results.push(convertBigIntToNumber(row) as T);
     }
     stmt.free();
 
@@ -155,5 +171,7 @@ export async function execute(sql: string, params: any[] = []): Promise<void> {
 export async function getLastInsertId(): Promise<number> {
     const database = await getDatabase();
     const result = database.exec('SELECT last_insert_rowid() as id');
-    return result[0]?.values[0]?.[0] as number || 0;
+    const id = result[0]?.values[0]?.[0];
+    // Convert BigInt to number if needed
+    return typeof id === 'bigint' ? Number(id) : (id as number || 0);
 }

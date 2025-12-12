@@ -5,8 +5,17 @@ A modern, responsive web application for tracking daily income, expenses, and pr
 ## Features
 
 - **Daily Entry Tracking**: Record cash in hand, credits, and detailed expense breakdown
+- **Cashflow Management**:
+  - Track powder purchases from factory
+  - Separate expenses from daily operations
+  - Visualize income vs expenses
+- **Inventory Monitoring (Stok)**:
+  - Track total powder purchased
+  - Monitor daily powder usage (packets and cups)
+  - View real-time remaining stock
+  - Low stock alerts
 - **Expense Categories**:
-  - Waiter (Tia roti) expenses
+  - Te tia roti expenses
   - Servers (Taan serve) expenses
   - Book keeping (booki) expenses
   - Other miscellaneous expenses
@@ -47,12 +56,17 @@ cd /home/user/Documents/Projects/Benateeta-Kava-bar
 npm install
 ```
 
-3. Start the development server:
+3. Run database migrations:
+```bash
+npm run migrate
+```
+
+4. Start the development server:
 ```bash
 npm run dev
 ```
 
-4. Open your browser and navigate to:
+5. Open your browser and navigate to:
 ```
 http://localhost:3000
 ```
@@ -69,16 +83,12 @@ http://localhost:3000
 ### For Regular Users
 
 1. **Login**: Use your credentials to access the dashboard
-2. **Daily Entry**: Fill out the daily entry form with:
-   - Date
-   - Cash in hand
-   - Credits (money owed to you)
-   - Daily expenses
-   - Packets used
-   - Cups used
-   - Optional notes
-3. **View Entries**: See your recent entries in the table below the form
-4. **Reports**: Navigate to the Reports page to view daily, weekly, or monthly analytics
+2. **Daily Entry**: Fill out the daily entry form to record sales and usage
+3. **Cashflow**:
+   - Record powder purchases from the factory
+   - Monitor remaining powder stock
+   - View cashflow analysis
+4. **Reports**: Navigate to the Reports page to view detailed analytics
 
 ### For Administrators
 
@@ -95,26 +105,25 @@ All regular user features, plus:
 The application uses the following formula:
 
 ```
-Total Expenses = Waiter + Servers + Bookkeeping + Other Expenses
+Total Expenses = Te tia roti + Servers + Bookkeeping + Other Expenses
 Profit = Cash in Hand + Credits + Total Expenses - Powder Cost
 
 Where:
 Powder Cost = (Packets × $63) + (Cups × $7.875)
 ```
 
-**Example:**
-- Cash in Hand: $600
-- Credits: $50
-- Waiter: $80
-- Servers: $100
-- Bookkeeping: $30
-- Other: $20
-- Packets: 3 ($189)
-- Cups: 2 ($15.75)
+## Inventory Logic
 
-Total Expenses = $230
-Powder Cost = $204.75
-**Profit = $600 + $50 + $230 - $204.75 = $675.25**
+The system tracks inventory using the formula:
+
+```
+Total Stock = Total Purchased - Total Used
+
+Where:
+Total Purchased = Sum of packets from "Powder Purchases"
+Total Used = Sum of packets/cups from "Daily Entries"
+Remaining = Displayed in Packets and Cups (e.g. 5p 3c)
+```
 
 ## Project Structure
 
@@ -122,9 +131,13 @@ Powder Cost = $204.75
 ├── app/
 │   ├── api/              # API routes
 │   │   ├── auth/         # Authentication endpoints
+│   │   ├── cashflow/     # Cashflow analysis endpoints
 │   │   ├── entries/      # Daily entries CRUD
+│   │   ├── inventory/    # Inventory monitoring
+│   │   ├── powder-purchases/ # Purchase tracking
 │   │   ├── reports/      # Reports generation
 │   │   └── admin/        # Admin user management
+│   ├── cashflow/         # Cashflow management page
 │   ├── dashboard/        # User dashboard page
 │   ├── reports/          # Reports page
 │   ├── admin/            # Admin panel page
@@ -133,6 +146,10 @@ Powder Cost = $204.75
 ├── components/           # React components
 │   ├── DailyEntryForm.tsx
 │   ├── EntryList.tsx
+│   ├── CashflowDashboard.tsx
+│   ├── InventoryDashboard.tsx
+│   ├── PowderPurchaseForm.tsx
+│   ├── PowderPurchaseList.tsx
 │   ├── ReportsDashboard.tsx
 │   ├── AdminPanel.tsx
 │   └── Navigation.tsx
@@ -140,6 +157,9 @@ Powder Cost = $204.75
 │   ├── db.ts            # Database connection and queries
 │   ├── auth.ts          # Authentication utilities
 │   └── session.ts       # Session management
+├── scripts/
+│   ├── migrate-cashflow.ts # Database migration script
+│   └── test-cashflow.sh    # Testing script
 └── database/
     ├── schema.sql       # Database schema
     └── kava-bar.db      # SQLite database (auto-generated)
@@ -165,6 +185,19 @@ Powder Cost = $204.75
 - `cups_used`: Number of cups used
 - `powder_cost`: Calculated powder cost
 - `profit`: Calculated profit
+- `notes`: Optional notes
+- `created_at`: Timestamp
+
+### Powder Purchases Table
+- `id`: Primary key
+- `user_id`: Foreign key to users
+- `purchase_date`: Date of purchase
+- `supplier_name`: Name of factory/supplier
+- `packets_purchased`: Quantity bought
+- `cost_per_packet`: Unit cost
+- `total_cost`: Total expense
+- `payment_method`: Cash/Credit/Transfer
+- `invoice_number`: Optional reference
 - `notes`: Optional notes
 - `created_at`: Timestamp
 

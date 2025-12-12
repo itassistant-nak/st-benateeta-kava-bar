@@ -15,8 +15,10 @@ export default function DashboardClient() {
     return (
         <div className="container" style={{ paddingTop: 'var(--spacing-xl)', paddingBottom: 'var(--spacing-2xl)' }}>
             <div className="mb-2xl">
-                <h1>Daily Dashboard</h1>
-                <p className="text-muted">Track your daily kava bar income and expenses</p>
+                <div>
+                    <h1>Daily Entry</h1>
+                    <p className="text-muted">Track your daily kava bar income and expenses</p>
+                </div>
             </div>
 
             <div className="grid gap-xl">

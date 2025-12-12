@@ -11,7 +11,7 @@ const PACKET_COST = 63;
 const CUPS_PER_PACKET = 8;
 const CUP_COST = PACKET_COST / CUPS_PER_PACKET;
 
-// Waiter cost calculation
+// Te tia roti cost calculation
 const WAITER_PER_PACKET = 5;
 const WAITER_PER_CUP = 0.625;
 
@@ -130,7 +130,7 @@ export default function DailyEntryForm({ onSuccess }: DailyEntryFormProps) {
 
         try {
             const response = await fetch('/api/entries', {
-                method: 'POST',
+                method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     date,
@@ -177,6 +177,8 @@ export default function DailyEntryForm({ onSuccess }: DailyEntryFormProps) {
             setServersExpense('');
             setBookkeepingExpense('');
             setOtherExpenses('');
+            setPackets('');
+            setCups('');
             setPackets('');
             setCups('');
             setNotes('');
@@ -232,6 +234,9 @@ export default function DailyEntryForm({ onSuccess }: DailyEntryFormProps) {
                     />
                     <span className="form-hint">Optional - name of the group or event</span>
                 </div>
+            </div>
+
+            <div className="grid grid-2">
 
                 <div className="form-group">
                     <label className="form-label">Aran te tia roti</label>
@@ -240,7 +245,7 @@ export default function DailyEntryForm({ onSuccess }: DailyEntryFormProps) {
                         className="input"
                         value={waiterName}
                         onChange={(e) => setWaiterName(e.target.value)}
-                        placeholder="Waiter name"
+                        placeholder="Te tia roti name"
                     />
                 </div>
 

@@ -64,7 +64,7 @@ export default function EntryList() {
 
                 <div class="section">
                     <div class="section-title">Expenses</div>
-                    <div class="row"><span class="label">Waiter</span><span class="value">$${entry.waiter_expense.toFixed(2)}</span></div>
+                    <div class="row"><span class="label">Te tia roti</span><span class="value">$${entry.waiter_expense.toFixed(2)}</span></div>
                     <div class="row"><span class="label">Servers</span><span class="value">$${entry.servers_expense.toFixed(2)}</span></div>
                     <div class="row"><span class="label">Bookkeeping</span><span class="value">$${entry.bookkeeping_expense.toFixed(2)}</span></div>
                     <div class="row"><span class="label">Other</span><span class="value">$${entry.other_expenses.toFixed(2)}</span></div>
