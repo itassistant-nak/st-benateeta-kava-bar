@@ -60,11 +60,11 @@ export default async function RootLayout({
     <html lang="en">
       <head>
         {/* Favicon */}
-        <link rel="icon" type="image/webp" href="/favicon.webp" />
-        <link rel="shortcut icon" type="image/webp" href="/favicon.webp" />
+        <link rel="icon" type="image/png" href="/favicon.png" />
+        <link rel="shortcut icon" type="image/png" href="/favicon.png" />
 
         {/* iOS Safari */}
-        <link rel="apple-touch-icon" href="/favicon.webp" />
+        <link rel="apple-touch-icon" href="/favicon.png" />
         <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png" />
         <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-192x192.png" />
@@ -85,7 +85,8 @@ export default async function RootLayout({
         <meta name="format-detection" content="telephone=no" />
 
         {/* Safe area for notched devices */}
-        <style dangerouslySetInnerHTML={{ __html: `
+        <style dangerouslySetInnerHTML={{
+          __html: `
           :root {
             --sat: env(safe-area-inset-top);
             --sar: env(safe-area-inset-right);
