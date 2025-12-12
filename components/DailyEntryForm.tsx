@@ -48,6 +48,27 @@ export default function DailyEntryForm({ onSuccess }: DailyEntryFormProps) {
     const [newPaymentName, setNewPaymentName] = useState('');
     const [newPaymentAmount, setNewPaymentAmount] = useState('');
 
+    // Fetch current cash balance from cashflow on mount
+    useEffect(() => {
+        const fetchCashBalance = async () => {
+            try {
+                const response = await fetch('/api/cashflow', {
+                    credentials: 'include'
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    // Set cash in hand to the net cashflow (current balance)
+                    if (data.netCashflow !== undefined && data.netCashflow > 0) {
+                        setCashInHand(data.netCashflow.toFixed(2));
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch cash balance:', err);
+            }
+        };
+        fetchCashBalance();
+    }, []);
+
     // Calculate powder cost and waiter cost in real-time
     const packetsNum = parseFloat(packets) || 0;
     const cupsNum = parseFloat(cups) || 0;
