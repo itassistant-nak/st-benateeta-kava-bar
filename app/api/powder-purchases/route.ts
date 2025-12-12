@@ -2,6 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/session';
 import { query, execute, getLastInsertId } from '@/lib/db';
 
+// Helper to convert BigInt to Number for JSON serialization
+function serializePurchase(purchase: any): any {
+    if (!purchase) return purchase;
+    return {
+        ...purchase,
+        id: typeof purchase.id === 'bigint' ? Number(purchase.id) : purchase.id,
+        user_id: typeof purchase.user_id === 'bigint' ? Number(purchase.user_id) : purchase.user_id,
+        packets_purchased: typeof purchase.packets_purchased === 'bigint' ? Number(purchase.packets_purchased) : purchase.packets_purchased,
+        cost_per_packet: typeof purchase.cost_per_packet === 'bigint' ? Number(purchase.cost_per_packet) : purchase.cost_per_packet,
+        total_cost: typeof purchase.total_cost === 'bigint' ? Number(purchase.total_cost) : purchase.total_cost,
+    };
+}
+
 interface PowderPurchase {
     id: number;
     user_id: number;
@@ -49,7 +62,7 @@ export async function GET(request: NextRequest) {
         sql += ' ORDER BY purchase_date DESC';
 
         const purchases = await query<PowderPurchase>(sql, params);
-        return NextResponse.json(purchases);
+        return NextResponse.json(purchases.map(serializePurchase));
     } catch (error: any) {
         console.error('Get powder purchases error:', error);
         return NextResponse.json(
@@ -100,9 +113,9 @@ export async function POST(request: NextRequest) {
         );
 
         const id = await getLastInsertId();
-        const newPurchase = await query<PowderPurchase>('SELECT * FROM powder_purchases WHERE id = ?', [id]);
+        const newPurchase = await query<PowderPurchase>('SELECT * FROM powder_purchases WHERE id = ?', [Number(id)]);
 
-        return NextResponse.json(newPurchase[0], { status: 201 });
+        return NextResponse.json(serializePurchase(newPurchase[0]), { status: 201 });
     } catch (error: any) {
         console.error('Create powder purchase error:', error);
         return NextResponse.json(
@@ -169,7 +182,7 @@ export async function PUT(request: NextRequest) {
         );
 
         const updated = await query<PowderPurchase>('SELECT * FROM powder_purchases WHERE id = ?', [id]);
-        return NextResponse.json(updated[0]);
+        return NextResponse.json(serializePurchase(updated[0]));
     } catch (error: any) {
         console.error('Update powder purchase error:', error);
         return NextResponse.json(
