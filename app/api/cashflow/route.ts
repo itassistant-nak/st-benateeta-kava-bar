@@ -171,54 +171,81 @@ export async function GET(request: NextRequest) {
         const totalOperationalExpenses = operationalData[0].totalOperational;
         const totalPowderPurchases = purchaseData[0].totalPurchases;
 
-        const now = new Date();
-        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        adjSql += ' AND date <= ?';
-        adjParams.push(lastDay.toISOString().split('T')[0]);
+        // 3. Get Adjustments (cash only for cashflow) - handle missing table gracefully
+        let adjustments: any[] = [];
+        try {
+            let adjSql = 'SELECT * FROM adjustments WHERE 1=1';
+            const adjParams: any[] = [];
+
+            if (session.role !== 'admin') {
+                adjSql += ' AND user_id = ?';
+                adjParams.push(session.userId);
+            } else if (userId) {
+                adjSql += ' AND user_id = ?';
+                adjParams.push(parseInt(userId));
+            }
+
+            if (startDate) {
+                adjSql += ' AND date >= ?';
+                adjParams.push(startDate);
+            }
+            if (endDate) {
+                adjSql += ' AND date <= ?';
+                adjParams.push(endDate);
+            }
+
+            adjSql += ' ORDER BY date DESC';
+            adjustments = await query<any>(adjSql, adjParams);
+        } catch (err: any) {
+            // If adjustments table doesn't exist yet, just use empty array
+            if (err.message && (err.message.includes('no such table') || err.message.includes('adjustments'))) {
+                console.log('Adjustments table not found, using empty array');
+                adjustments = [];
+            } else {
+                throw err;
+            }
+        }
+
+        // Calculate Adjustment Totals
+        const totalCashAdjustments = adjustments
+            .filter((a: any) => a.type === 'cash')
+            .reduce((sum: number, a: any) => sum + (Number(a.amount) || 0), 0);
+
+        const totalPowderAdjustments = adjustments
+            .filter((a: any) => a.type === 'powder')
+            .reduce((sum: number, a: any) => sum + (Number(a.amount) || 0), 0);
+
+        // Calculate Totals
+        const totalIncome = totalCashInHand + totalCredits;
+        const totalExpenses = totalPowderPurchases + totalOperationalExpenses;
+        const netCashflow = totalIncome - totalExpenses + totalCashAdjustments;
+
+        return NextResponse.json({
+            period,
+            startDate: startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+            endDate: endDate || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
+            income: {
+                totalCashInHand,
+                totalCredits,
+                total: totalIncome
+            },
+            expenses: {
+                powderPurchases: totalPowderPurchases,
+                operationalExpenses: totalOperationalExpenses,
+                total: totalExpenses
+            },
+            adjustments: {
+                cash: totalCashAdjustments,
+                powder: totalPowderAdjustments
+            },
+            netCashflow,
+            entries
+        });
+    } catch (error: any) {
+        console.error('Get cashflow error:', error);
+        return NextResponse.json(
+            { error: error.message || 'Internal server error' },
+            { status: error.message === 'Unauthorized' ? 401 : 500 }
+        );
     }
-
-        const adjustments = await query<any>(adjSql, adjParams);
-
-    // Calculate Adjustment Totals
-    const totalCashAdjustments = adjustments
-        .filter((a: any) => a.type === 'cash')
-        .reduce((sum: number, a: any) => sum + (Number(a.amount) || 0), 0);
-
-    const totalPowderAdjustments = adjustments
-        .filter((a: any) => a.type === 'powder')
-        .reduce((sum: number, a: any) => sum + (Number(a.amount) || 0), 0);
-
-    // Calculate Totals
-    const totalIncome = totalCashInHand + totalCredits;
-    const totalExpenses = totalPowderPurchases + totalOperationalExpenses;
-    const netCashflow = totalIncome - totalExpenses + totalCashAdjustments;
-
-    return NextResponse.json({
-        period,
-        startDate: startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-        endDate: endDate || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
-        income: {
-            totalCashInHand,
-            totalCredits,
-            total: totalIncome
-        },
-        expenses: {
-            powderPurchases: totalPowderPurchases,
-            operationalExpenses: totalOperationalExpenses,
-            total: totalExpenses
-        },
-        adjustments: {
-            cash: totalCashAdjustments,
-            powder: totalPowderAdjustments
-        },
-        netCashflow,
-        entries
-    });
-} catch (error: any) {
-    console.error('Get cashflow error:', error);
-    return NextResponse.json(
-        { error: error.message || 'Internal server error' },
-        { status: error.message === 'Unauthorized' ? 401 : 500 }
-    );
-}
 }
