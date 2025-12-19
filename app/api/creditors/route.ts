@@ -1,38 +1,7 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/session';
 import { query } from '@/lib/db';
-
-interface DailyEntry {
-    id: number;
-    user_id: number;
-    date: string;
-    group_name: string | null;
-    credit_entries: string | null;
-    bookkeeper_name: string | null;
-}
-
-interface CreditEntry {
-    name: string;
-    amount: number;
-}
-
-interface CreditPayment {
-    id: number;
-    creditor_name: string;
-    payment_date: string;
-    amount: number;
-    notes: string | null;
-}
-
-interface CreditorRecord {
-    date: string;
-    creditor_name: string;
-    amount: number;
-    bookkeeper_name: string | null;
-    group_name: string | null;
-    type: 'credit' | 'payment';
-    notes?: string | null;
-}
 
 export async function GET(request: NextRequest) {
     try {
@@ -43,134 +12,148 @@ export async function GET(request: NextRequest) {
         const creditorName = searchParams.get('creditorName');
         const groupName = searchParams.get('groupName');
 
-        let sql = 'SELECT id, user_id, date, group_name, credit_entries, bookkeeper_name FROM daily_entries WHERE 1=1';
-        const params: any[] = [];
+        // 1. Fetch Daily Entries (for Credits)
+        let entriesSql = `
+            SELECT 
+                date, 
+                bookkeeper_name, 
+                group_name,
+                credit_entries,
+                user_id
+            FROM daily_entries 
+            WHERE 1=1
+        `;
+        const entriesParams: any[] = [];
 
-        // Admins and managers can see all entries
         if (session.role !== 'admin' && session.role !== 'manager') {
-            sql += ' AND user_id = ?';
-            params.push(session.userId);
+            entriesSql += ' AND user_id = ?';
+            entriesParams.push(session.userId);
         }
 
         if (startDate) {
-            sql += ' AND date >= ?';
-            params.push(startDate);
+            entriesSql += ' AND date >= ?';
+            entriesParams.push(startDate);
         }
-
         if (endDate) {
-            sql += ' AND date <= ?';
-            params.push(endDate);
+            entriesSql += ' AND date <= ?';
+            entriesParams.push(endDate);
         }
-
         if (groupName) {
-            sql += ' AND group_name LIKE ?';
-            params.push(`%${groupName}%`);
+            entriesSql += ' AND group_name LIKE ?';
+            entriesParams.push(`%${groupName}%`);
         }
 
-        sql += ' ORDER BY date DESC';
+        const entries = await query<any>(entriesSql, entriesParams);
 
-        const entries = await query<DailyEntry>(sql, params);
+        // 2. Fetch Credit Payments
+        let paymentsSql = `
+            SELECT 
+                payment_date as date, 
+                creditor_name, 
+                amount, 
+                notes,
+                user_id
+            FROM credit_payments 
+            WHERE 1=1
+        `;
+        const paymentsParams: any[] = [];
 
-        // Extract credit entries from each daily entry
-        const records: CreditorRecord[] = [];
+        if (session.role !== 'admin' && session.role !== 'manager') {
+            paymentsSql += ' AND user_id = ?';
+            paymentsParams.push(session.userId);
+        }
 
-        for (const entry of entries) {
+        if (startDate) {
+            paymentsSql += ' AND payment_date >= ?';
+            paymentsParams.push(startDate);
+        }
+        if (endDate) {
+            paymentsSql += ' AND payment_date <= ?';
+            paymentsParams.push(endDate);
+        }
+        if (creditorName) {
+            paymentsSql += ' AND creditor_name LIKE ?';
+            paymentsParams.push(`%${creditorName}%`);
+        }
+
+        const payments = await query<any>(paymentsSql, paymentsParams);
+
+        // 3. Process and Aggregate Data
+        const records: any[] = [];
+        const uniqueCreditorsSet = new Set<string>();
+        const uniqueGroupsSet = new Set<string>();
+
+        // Process credits from daily entries
+        entries.forEach((entry: any) => {
+            if (entry.group_name) uniqueGroupsSet.add(entry.group_name);
+
             if (entry.credit_entries) {
                 try {
-                    const credits: CreditEntry[] = JSON.parse(entry.credit_entries);
-                    for (const credit of credits) {
-                        // Filter by creditor name if specified
-                        if (creditorName && !credit.name.toLowerCase().includes(creditorName.toLowerCase())) {
-                            continue;
-                        }
-                        records.push({
-                            date: entry.date,
-                            creditor_name: credit.name,
-                            amount: credit.amount,
-                            bookkeeper_name: entry.bookkeeper_name,
-                            group_name: entry.group_name,
-                            type: 'credit',
+                    const parsedCredits = JSON.parse(entry.credit_entries);
+                    if (Array.isArray(parsedCredits)) {
+                        parsedCredits.forEach((credit: any) => {
+                            if (credit.name) uniqueCreditorsSet.add(credit.name);
+
+                            // Apply name filter in memory for daily_entries
+                            if (creditorName && !credit.name.toLowerCase().includes(creditorName.toLowerCase())) {
+                                return;
+                            }
+
+                            records.push({
+                                date: entry.date,
+                                creditor_name: credit.name,
+                                amount: credit.amount,
+                                bookkeeper_name: entry.bookkeeper_name || 'N/A',
+                                group_name: entry.group_name || 'N/A',
+                                type: 'credit',
+                                notes: null
+                            });
                         });
                     }
                 } catch (e) {
-                    // Skip invalid JSON
-                    console.error('Invalid credit_entries JSON:', e);
+                    console.error('Error parsing credit_entries for date', entry.date, e);
                 }
             }
-        }
+        });
 
-        // Get all unique creditor names from credits
-        const creditNames = [...new Set(records.map(c => c.creditor_name))];
+        // Process payments
+        payments.forEach((p: any) => {
+            if (p.creditor_name) uniqueCreditorsSet.add(p.creditor_name);
 
-        // Fetch credit payments
-        let paymentSql = 'SELECT * FROM credit_payments WHERE 1=1';
-        const paymentParams: any[] = [];
-
-        if (session.role !== 'admin' && session.role !== 'manager') {
-            paymentSql += ' AND user_id = ?';
-            paymentParams.push(session.userId);
-        }
-
-        if (startDate) {
-            paymentSql += ' AND payment_date >= ?';
-            paymentParams.push(startDate);
-        }
-
-        if (endDate) {
-            paymentSql += ' AND payment_date <= ?';
-            paymentParams.push(endDate);
-        }
-
-        if (creditorName) {
-            paymentSql += ' AND creditor_name LIKE ?';
-            paymentParams.push(`%${creditorName}%`);
-        }
-
-        let payments: CreditPayment[] = [];
-        try {
-            payments = await query<CreditPayment>(paymentSql, paymentParams);
-        } catch (err) {
-            // Table might not exist yet
-            console.log('Credit payments table not found');
-        }
-
-        // Add payments to records
-        for (const payment of payments) {
             records.push({
-                date: payment.payment_date,
-                creditor_name: payment.creditor_name,
-                amount: payment.amount,
+                date: p.date,
+                creditor_name: p.creditor_name,
+                amount: p.amount,
                 bookkeeper_name: null,
                 group_name: null,
                 type: 'payment',
-                notes: payment.notes,
+                notes: p.notes
             });
-        }
+        });
 
-        // Sort all records by date descending
+        // Sort by date DESC
         records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-        // Calculate totals
-        const totalCredits = records.filter(r => r.type === 'credit').reduce((sum, c) => sum + c.amount, 0);
-        const totalPayments = records.filter(r => r.type === 'payment').reduce((sum, c) => sum + c.amount, 0);
-        const outstandingBalance = totalCredits - totalPayments;
+        // Calculate Totals
+        let totalCredits = 0;
+        let totalPayments = 0;
 
-        // Get unique creditor names for filter dropdown (from both credits and payments)
-        const paymentNames = payments.map(p => p.creditor_name);
-        const uniqueCreditors = [...new Set([...creditNames, ...paymentNames])].sort();
+        records.forEach(r => {
+            if (r.type === 'credit') totalCredits += r.amount;
+            else totalPayments += r.amount;
+        });
 
-        // Get unique group names for filter dropdown
-        const uniqueGroups = [...new Set(entries.filter(e => e.group_name).map(e => e.group_name!))].sort();
-
-        return NextResponse.json({
+        const result = {
             records,
             totalCredits,
             totalPayments,
-            outstandingBalance,
+            outstandingBalance: totalCredits - totalPayments,
             count: records.length,
-            uniqueCreditors,
-            uniqueGroups,
-        });
+            uniqueCreditors: Array.from(uniqueCreditorsSet).sort(),
+            uniqueGroups: Array.from(uniqueGroupsSet).sort()
+        };
+
+        return NextResponse.json(result);
     } catch (error: any) {
         console.error('Get creditors error:', error);
         return NextResponse.json(
@@ -179,4 +162,3 @@ export async function GET(request: NextRequest) {
         );
     }
 }
-

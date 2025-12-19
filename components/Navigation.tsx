@@ -264,7 +264,7 @@ export default function Navigation() {
                                     className={`btn ${isActive('/creditors') ? 'btn-primary' : 'btn-secondary'}`}
                                     style={{ justifyContent: 'flex-start' }}
                                 >
-                                    💳 Creditors
+                                    🤝 Creditors
                                 </Link>
                             )}
                             {access.admin && (

@@ -215,12 +215,51 @@ export async function GET(request: NextRequest) {
             .filter((a: any) => a.type === 'powder')
             .reduce((sum: number, a: any) => sum + (Number(a.amount) || 0), 0);
 
+        // 4. Get Credit Payments (money collected from creditors) - this is INCOME
+        let creditPayments: any[] = [];
+        try {
+            let cpSql = 'SELECT * FROM credit_payments WHERE 1=1';
+            const cpParams: any[] = [];
+
+            if (session.role !== 'admin') {
+                cpSql += ' AND user_id = ?';
+                cpParams.push(session.userId);
+            } else if (userId) {
+                cpSql += ' AND user_id = ?';
+                cpParams.push(parseInt(userId));
+            }
+
+            if (startDate) {
+                cpSql += ' AND payment_date >= ?';
+                cpParams.push(startDate);
+            }
+            if (endDate) {
+                cpSql += ' AND payment_date <= ?';
+                cpParams.push(endDate);
+            }
+
+            cpSql += ' ORDER BY payment_date DESC';
+            creditPayments = await query<any>(cpSql, cpParams);
+        } catch (err: any) {
+            // If credit_payments table doesn't exist yet, just use empty array
+            if (err.message && (err.message.includes('no such table') || err.message.includes('credit_payments'))) {
+                console.log('Credit payments table not found, using empty array');
+                creditPayments = [];
+            } else {
+                throw err;
+            }
+        }
+
+        // Total credit payments collected (this is income - money coming in from creditors)
+        const totalCreditPayments = creditPayments.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+
         // Calculate Totals
         // Cash in Hand is actual cash received (excluding credits)
+        // Credit Payments are money collected from creditors (also income)
         // Credits are outstanding amounts not yet collected
-        const totalIncome = totalCashInHand; // Only actual cash received
+        const totalIncome = totalCashInHand + totalCreditPayments; // Cash + collected credit payments
         const totalExpenses = totalPowderPurchases + totalOperationalExpenses;
-        const netCashflow = totalCashInHand - totalExpenses + totalCashAdjustments; // Cash balance only
+        const netCashflow = totalCashInHand + totalCreditPayments - totalExpenses + totalCashAdjustments; // Cash balance
 
         return NextResponse.json({
             period,
@@ -228,8 +267,9 @@ export async function GET(request: NextRequest) {
             endDate: endDate || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
             income: {
                 totalCashInHand,
+                totalCreditPayments, // Money collected from creditors
                 totalCredits, // Outstanding credits (not yet collected)
-                total: totalIncome // Only cash in hand
+                total: totalIncome // Cash in hand + credit payments collected
             },
             expenses: {
                 powderPurchases: totalPowderPurchases,
@@ -241,8 +281,9 @@ export async function GET(request: NextRequest) {
                 powder: totalPowderAdjustments
             },
             adjustmentsList: adjustments.filter((a: any) => a.type === 'cash'), // List of cash adjustments for log
-            outstandingCredits: totalCredits, // Separate field for clarity
-            netCashflow, // Actual cash balance (excluding credits)
+            creditPaymentsList: creditPayments, // List of credit payments for log
+            outstandingCredits: totalCredits - totalCreditPayments, // Remaining credits after payments
+            netCashflow, // Actual cash balance
             entries
         });
     } catch (error: any) {

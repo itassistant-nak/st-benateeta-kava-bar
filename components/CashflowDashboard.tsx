@@ -13,12 +13,21 @@ interface Adjustment {
     notes: string;
 }
 
+interface CreditPayment {
+    id: number;
+    creditor_name: string;
+    payment_date: string;
+    amount: number;
+    notes: string;
+}
+
 interface CashflowSummary {
     period: string;
     startDate: string;
     endDate: string;
     income: {
         totalCashInHand: number;
+        totalCreditPayments: number;
         totalCredits: number;
         total: number;
     };
@@ -40,6 +49,7 @@ interface CashflowSummary {
         powder: number;
     };
     adjustmentsList: Adjustment[];
+    creditPaymentsList: CreditPayment[];
 }
 
 export default function CashflowDashboard() {
@@ -163,30 +173,45 @@ export default function CashflowDashboard() {
                     </div>
                 </div>
 
-                {/* Total Expenses */}
+                {/* Credit Payments Collected */}
                 <div className="stat-card" style={{
                     padding: '16px',
                     backgroundColor: '#1a1a1a',
                     borderRadius: '12px',
-                    border: '1px solid #2a2a2a'
+                    border: '1px solid #8b5cf6'
                 }}>
-                    <div style={{ color: '#888', fontSize: '12px', marginBottom: '8px' }}>💸 Total Expenses</div>
-                    <div style={{ fontSize: 'clamp(18px, 4vw, 28px)', fontWeight: 'bold', color: '#ef4444', marginBottom: '8px' }}>
-                        ${summary.expenses.total.toFixed(2)}
+                    <div style={{ color: '#8b5cf6', fontSize: '12px', marginBottom: '8px' }}>💰 Credit Payments</div>
+                    <div style={{ fontSize: 'clamp(18px, 4vw, 28px)', fontWeight: 'bold', color: '#8b5cf6', marginBottom: '8px' }}>
+                        ${(summary.income.totalCreditPayments || 0).toFixed(2)}
                     </div>
                     <div style={{ fontSize: '10px', color: '#666', lineHeight: '1.4' }}>
-                        Powder: ${summary.expenses.powderPurchases.toFixed(2)}<br />
-                        Operations: ${summary.expenses.operationalExpenses.toFixed(2)}
+                        Collected from creditors
                     </div>
                 </div>
             </div>
 
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
+                gridTemplateColumns: 'repeat(3, 1fr)',
                 gap: '12px',
                 marginBottom: '32px'
             }}>
+                {/* Total Expenses */}
+                <div className="stat-card" style={{
+                    padding: '16px',
+                    backgroundColor: '#1a1a1a',
+                    borderRadius: '12px',
+                    border: '1px solid #ef4444'
+                }}>
+                    <div style={{ color: '#ef4444', fontSize: '12px', marginBottom: '8px' }}>💸 Total Expenses</div>
+                    <div style={{ fontSize: 'clamp(18px, 4vw, 28px)', fontWeight: 'bold', color: '#ef4444', marginBottom: '8px' }}>
+                        ${summary.expenses.total.toFixed(2)}
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#666', lineHeight: '1.4' }}>
+                        Powder + Operations
+                    </div>
+                </div>
+
                 {/* Outstanding Credits */}
                 <div className="stat-card" style={{
                     padding: '16px',
@@ -194,12 +219,12 @@ export default function CashflowDashboard() {
                     borderRadius: '12px',
                     border: '1px solid #f59e0b'
                 }}>
-                    <div style={{ color: '#f59e0b', fontSize: '12px', marginBottom: '8px' }}>⏳ Outstanding Credits</div>
+                    <div style={{ color: '#f59e0b', fontSize: '12px', marginBottom: '8px' }}>⏳ Outstanding</div>
                     <div style={{ fontSize: 'clamp(18px, 4vw, 28px)', fontWeight: 'bold', color: '#f59e0b', marginBottom: '8px' }}>
-                        ${(summary.outstandingCredits || summary.income.totalCredits).toFixed(2)}
+                        ${(summary.outstandingCredits || 0).toFixed(2)}
                     </div>
                     <div style={{ fontSize: '10px', color: '#666', lineHeight: '1.4' }}>
-                        Not yet collected
+                        Credits not collected
                     </div>
                 </div>
 
@@ -210,7 +235,7 @@ export default function CashflowDashboard() {
                     borderRadius: '12px',
                     border: summary.netCashflow >= 0 ? '2px solid #10b981' : '2px solid #ef4444'
                 }}>
-                    <div style={{ color: '#888', fontSize: '12px', marginBottom: '8px' }}>🏦 Net Cash Balance</div>
+                    <div style={{ color: '#888', fontSize: '12px', marginBottom: '8px' }}>🏦 Net Balance</div>
                     <div style={{
                         fontSize: 'clamp(18px, 4vw, 28px)',
                         fontWeight: 'bold',
@@ -220,7 +245,7 @@ export default function CashflowDashboard() {
                         ${summary.netCashflow.toFixed(2)}
                     </div>
                     <div style={{ fontSize: '10px', color: '#666', lineHeight: '1.4' }}>
-                        Cash received − Expenses
+                        Total cash on hand
                     </div>
                 </div>
             </div>
